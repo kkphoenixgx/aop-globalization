@@ -1,0 +1,11 @@
+{
+  "name": "panteao-bdi",
+  "version": "1.0.0",
+  "description": "Multi-language BDI Coprocessor using Jason engine",
+  "main": "index.js",
+  "bin": {
+    "panteao": "./bin/panteao.js"
+  },
+  "dependencies": {},
+  "private": true
+}

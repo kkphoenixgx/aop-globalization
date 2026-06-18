@@ -1,0 +1,5 @@
+mas test_project {
+    agent bob : bob.asl {
+        agarch: jason.architecture.AgArch
+    }
+}

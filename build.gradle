@@ -1,0 +1,33 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.gradleup.shadow' version '8.3.5'
+}
+
+group = 'br.com.kkphoenix'
+version = '1.0.0'
+
+repositories {
+    mavenCentral()
+    maven { url "https://raw.githubusercontent.com/jacamo-lang/mvn-repo/master" }
+}
+
+dependencies {
+    implementation 'io.github.jason-lang:jason-interpreter:3.3.0'
+    implementation 'org.json:json:20230227'
+}
+
+application {
+    mainClass = 'br.com.kkphoenix.jason.ipc.Launcher'
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+    options.compilerArgs.addAll(['-Xlint:unchecked', '-Xlint:deprecation'])
+}
+
+shadowJar {
+    archiveBaseName.set('jason-ipc')
+    archiveClassifier.set('all')
+    archiveVersion.set('')
+}
