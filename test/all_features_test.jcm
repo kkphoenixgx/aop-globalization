@@ -1,0 +1,3 @@
+mas all_features_test {
+    agent test_agent : all_features_agent.asl
+}

@@ -1,0 +1,5 @@
+Package: PanteaoClientR
+Title: R client for Panteao BDI Coprocessor
+Version: 1.0.0
+Description: R TCP Socket client template for BDI agent integration.
+License: MIT

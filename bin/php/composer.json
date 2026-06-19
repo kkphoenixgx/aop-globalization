@@ -1,0 +1,7 @@
+{
+    "name": "kkphoenix/panteao-client-php",
+    "description": "PHP client for Panteao BDI Coprocessor",
+    "require": {
+        "php": ">=7.4"
+    }
+}

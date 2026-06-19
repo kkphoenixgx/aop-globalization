@@ -1,0 +1,5 @@
+[project]
+name = "panteao-client-python"
+version = "1.0.0"
+description = "Python client for Panteao BDI Coprocessor"
+dependencies = []

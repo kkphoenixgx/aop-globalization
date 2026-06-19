@@ -1,0 +1,3 @@
+mas test_ipc {
+    agent test_agent : test_ipc.asl
+}

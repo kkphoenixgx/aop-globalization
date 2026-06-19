@@ -1,3 +1,41 @@
 .context/
 .gradle/
-build/
+build/*
+!build/libs/
+!build/libs/*.jar
+!build/libs/jason-ipc-all.jar
+graalvm/
+.vscode/
+.idea/
+
+# artefatos compilados / executáveis
+bin/panteao-engine
+bin/panteao-engine.exe
+bin/panteao-engine.bak
+bin/*.so
+bin/**/*.so
+**/*.so
+**/*.dylib
+**/*.dll
+**/*.exe
+*.class
+*.log
+*.tmp
+*.bak
+
+# binários grandes usados apenas localmente
+**/scala-cli
+**/scala-cli.exe
+**/scala-cli.bat
+**/scala-cli-*/*
+test/**/kotlinc/**
+
+# dependências locais
+node_modules/
+sdk/**/node_modules/
+sdk/**/dist/
+
+# caches e cobertura
+coverage/
+.tmp/
+tmp/

@@ -4,11 +4,15 @@ const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
+const nativePathLinux = path.join(__dirname, 'panteao-engine');
+const nativePathWin = path.join(__dirname, 'panteao-engine.exe');
+const nativePath = fs.existsSync(nativePathWin) ? nativePathWin : nativePathLinux;
+
 const jarPath = path.join(__dirname, '../build/libs/jason-ipc-all.jar');
 
-if (!fs.existsSync(jarPath)) {
-    console.error(`Error: Jason engine JAR not found at ${jarPath}`);
-    console.error(`Please compile the project first using: ./gradlew shadowJar`);
+if (!fs.existsSync(nativePath) && !fs.existsSync(jarPath)) {
+    console.error(`Error: Neither native engine executable nor JAR found.`);
+    console.error(`Please compile the project first using: npm run build`);
     process.exit(1);
 }
 
@@ -33,15 +37,21 @@ function cleanup() {
     }
 }
 
-const args = [
-    '-jar',
-    jarPath,
-    ...process.argv.slice(2)
-];
-
-const child = spawn('java', args, {
-    stdio: 'inherit' // Inherits standard streams (stdin, stdout, stderr)
-});
+let child;
+if (fs.existsSync(nativePath)) {
+    child = spawn(nativePath, process.argv.slice(2), {
+        stdio: 'inherit'
+    });
+} else {
+    const args = [
+        '-jar',
+        jarPath,
+        ...process.argv.slice(2)
+    ];
+    child = spawn('java', args, {
+        stdio: 'inherit'
+    });
+}
 
 child.on('close', (code) => {
     cleanup();

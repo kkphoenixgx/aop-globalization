@@ -1,0 +1,12 @@
+{
+    "name": "panteao/client",
+    "description": "PHP client SDK for Panteao BDI Coprocessor",
+    "autoload": {
+        "psr-4": {
+            "Panteao\\": "src/"
+        }
+    },
+    "require": {
+        "php": ">=7.4"
+    }
+}

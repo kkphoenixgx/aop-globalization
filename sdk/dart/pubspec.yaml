@@ -1,0 +1,5 @@
+name: panteao_client
+description: Dart client for Panteao BDI Coprocessor
+version: 1.0.0
+environment:
+  sdk: '>=3.0.0 <4.0.0'

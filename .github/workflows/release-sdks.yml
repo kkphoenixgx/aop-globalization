@@ -1,0 +1,147 @@
+name: Build, Package and Release SDKs
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # Job 1: Pack the decentralized SDKs (C, C++, ObjC, R, Shell) and create a GitHub Release
+  package-and-release:
+    name: Package Unmanaged SDKs & GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Package SDKs
+        run: |
+          mkdir -p dist
+          
+          # C SDK
+          tar -czf dist/panteao-client-c.tar.gz -C sdk/c .
+          zip -r dist/panteao-client-c.zip sdk/c
+          
+          # C++ SDK
+          tar -czf dist/panteao-client-cpp.tar.gz -C sdk/cpp .
+          zip -r dist/panteao-client-cpp.zip sdk/cpp
+          
+          # Objective-C SDK
+          tar -czf dist/panteao-client-objc.tar.gz -C sdk/objc .
+          zip -r dist/panteao-client-objc.zip sdk/objc
+          
+          # R SDK
+          tar -czf dist/panteao-client-r.tar.gz -C sdk/r .
+          zip -r dist/panteao-client-r.zip sdk/r
+          
+          # Shell SDK
+          tar -czf dist/panteao-client-shell.tar.gz -C sdk/shell .
+          zip -r dist/panteao-client-shell.zip sdk/shell
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/panteao-client-c.tar.gz
+            dist/panteao-client-c.zip
+            dist/panteao-client-cpp.tar.gz
+            dist/panteao-client-cpp.zip
+            dist/panteao-client-objc.tar.gz
+            dist/panteao-client-objc.zip
+            dist/panteao-client-r.tar.gz
+            dist/panteao-client-r.zip
+            dist/panteao-client-shell.tar.gz
+            dist/panteao-client-shell.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Job 2: Centralized Package Managers
+  publish-managed:
+    name: Publish Managed SDKs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2a. Node.js & TypeScript -> npm
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Publish JavaScript Client to npm
+        working-directory: sdk/javascript
+        run: |
+          npm ci || npm install
+          npm publish --access public || echo "Already published"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish TypeScript Client to npm
+        working-directory: sdk/typescript
+        run: |
+          npm ci || npm install
+          npm run build
+          npm publish --access public || echo "Already published"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # 2b. Python -> PyPI
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Build and Publish Python Client to PyPI
+        working-directory: sdk/python
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build
+          twine upload --skip-existing dist/*
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+
+      # 2c. Rust -> crates.io
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Publish Rust Client
+        working-directory: sdk/rust
+        run: |
+          cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }} --allow-dirty || echo "Already published"
+
+      # 2d. Java/Kotlin -> Maven Central
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Publish Java Client
+        working-directory: sdk/java
+        run: ./gradlew publish || echo "Failed to publish Java"
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.SONATYPE_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.SONATYPE_PASSWORD }}
+      - name: Publish Kotlin Client
+        working-directory: sdk/kotlin
+        run: ./gradlew publish || echo "Failed to publish Kotlin"
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.SONATYPE_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.SONATYPE_PASSWORD }}
+
+      # 2e. C# -> NuGet
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Publish NuGet Package
+        working-directory: sdk/csharp
+        run: |
+          dotnet pack --configuration Release --output dist/
+          dotnet nuget push dist/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate || echo "NuGet push skipped"

@@ -14,22 +14,21 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Launcher {
+    private static final Logger logger = Logger.getLogger(Launcher.class.getName());
+    private static File tempMas2jFile = null;
+
     static {
-        // Enforce headless mode and clean formatting at the very beginning of class loading
         System.setProperty("java.awt.headless", "true");
         System.setProperty("java.util.logging.SimpleFormatter.format", "%5$s%n");
+
         try (java.io.InputStream in = Launcher.class.getResourceAsStream("/logging.properties")) {
             if (in != null) {
                 java.util.logging.LogManager.getLogManager().readConfiguration(in);
             }
-        } catch (Exception e) {
-            // ignore
-        }
+        } 
+        catch (Exception e) { }
     }
 
-    private static final Logger logger = Logger.getLogger(Launcher.class.getName());
-
-    private static File tempMas2jFile = null;
 
     public static class AgentConfig {
         String name;
@@ -43,39 +42,53 @@ public class Launcher {
         String projectPath = null;
         List<String> extraArgs = new ArrayList<>();
 
-        // Simple CLI Parsing
+        //? --------- Simple CLI Parsing for jcm && mas2j files ---------
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
+            
             if (arg.endsWith(".jcm") || arg.endsWith(".mas2j")) {
                 projectPath = arg;
             } else {
                 extraArgs.add(arg);
             }
         }
-
         if (projectPath == null) {
             logger.severe("Error: You must specify a .jcm or .mas2j project file.");
             printUsage();
             System.exit(1);
         }
 
+        //? --------- Handling jcm & mas2j files ---------
+        
         File projectFile = new File(projectPath).getAbsoluteFile();
         if (!projectFile.exists()) {
             logger.severe("Project file not found: " + projectFile.getAbsolutePath());
             System.exit(1);
         }
 
-        // Translate JCM to MAS2J if JCM is provided
+        String portStr = null;
+        boolean isBrowser = false;
+        for (int i = 0; i < args.length; i++) {
+            if (args[i].equals("--port") && i + 1 < args.length) {
+                portStr = args[i+1];
+            } else if (args[i].equals("--browser")) {
+                isBrowser = true;
+            }
+        }
+
+        //? Translate JCM to MAS2J if JCM is provided
         if (projectFile.getName().endsWith(".jcm")) {
             try {
-                projectPath = translateJcmToMas2j(projectFile);
+                projectPath = translateJcmToMas2j(projectFile, portStr, isBrowser);
             } catch (IOException e) {
                 logger.severe("Failed to parse JCM file: " + e.getMessage());
                 System.exit(1);
             }
         }
 
-        // Create temporary logging properties to bypass MASConsoleLogHandler
+
+        //? --------- Creating logs --------- 
+
         File tempLogProps = null;
         try {
             tempLogProps = File.createTempFile("panteao_log_", ".properties");
@@ -90,18 +103,21 @@ public class Launcher {
             logger.warning("Failed to create temporary logging configuration: " + e.getMessage());
         }
 
-        // Build runner arguments: project path MUST be first (args[0]), followed by flags
+        //? Build runner arguments: project path MUST be first (args[0]), followed by flags
         List<String> runnerArgs = new ArrayList<>();
         runnerArgs.add(projectPath);
-        runnerArgs.add("--no-net"); // Enable headless mode, disable MBeans, RMI and web inspector
+        
+        //? Enable headless mode, disable MBeans, RMI and web inspector
+        runnerArgs.add("--no-net");
         if (tempLogProps != null) {
             runnerArgs.add("--log-conf");
             runnerArgs.add(tempLogProps.getAbsolutePath());
         }
         runnerArgs.addAll(extraArgs);
 
+        //? --------- CleanUp ---------
+
         final File finalTempLogProps = tempLogProps;
-        // Register shutdown hook to clean up temp files
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             if (tempMas2jFile != null && tempMas2jFile.exists()) {
                 tempMas2jFile.delete();
@@ -111,7 +127,8 @@ public class Launcher {
             }
         }));
 
-        // Run Jason MAS
+        //? --------- Bootstrap ---------
+
         try {
             logger.fine("Bootstrapping Jason MAS with project: " + projectPath);
             String[] runArgs = runnerArgs.toArray(new String[0]);
@@ -123,7 +140,9 @@ public class Launcher {
         }
     }
 
-    private static String translateJcmToMas2j(File jcmFile) throws IOException {
+    //? ----------- Helpers -----------
+
+    private static String translateJcmToMas2j(File jcmFile, String portStr, boolean browser) throws IOException {
         logger.fine("Parsing JCM file: " + jcmFile.getAbsolutePath());
         String content = Files.readString(jcmFile.toPath(), StandardCharsets.UTF_8);
 
@@ -175,15 +194,30 @@ public class Launcher {
             throw new IOException("No agents defined in JCM project file.");
         }
 
+        boolean hasPort = (portStr != null);
         // Generate MAS2J
         StringBuilder sb = new StringBuilder();
         sb.append("MAS temp_mas {\n");
         sb.append("    infrastructure: Centralised\n\n");
+        if (browser) {
+            sb.append("    environment: br.com.kkphoenix.jason.ipc.BrowserEnvironment\n\n");
+        } else if (hasPort) {
+            sb.append("    environment: br.com.kkphoenix.jason.ipc.IPCEnvironment(\"--port\", \"" + portStr + "\")\n\n");
+        }
 
         // Collect source paths relative to the current working directory (Cwd)
         java.nio.file.Path userCwd = new File(".").getAbsoluteFile().toPath().normalize();
         List<String> sourcePaths = new ArrayList<>();
         for (AgentConfig config : configs) {
+            if (browser) {
+                if (!config.archs.contains("br.com.kkphoenix.jason.ipc.BrowserAgArch")) {
+                    config.archs.add(0, "br.com.kkphoenix.jason.ipc.BrowserAgArch");
+                }
+            } else if (hasPort) {
+                if (!config.archs.contains("br.com.kkphoenix.jason.ipc.IPCAgArch")) {
+                    config.archs.add(0, "br.com.kkphoenix.jason.ipc.IPCAgArch");
+                }
+            }
             String escapedAslPath = config.aslPath.replace("\\", "/");
             File aslFile = new File(escapedAslPath);
             if (!aslFile.isAbsolute()) {

@@ -1,0 +1,201 @@
+[
+{
+  "name":"jason.asSemantics.Agent",
+  "queryAllPublicMethods":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.asSyntax.directives.Include",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.asSyntax.directives.NameSpace",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.bb.DefaultBeliefBase",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.Abs",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.Average",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.Count",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.Length",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.Max",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.Min",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.Random",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.Round",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.Sqrt",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.StdDev",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.Sum",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.acos",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.asin",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.atan",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.ceil",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.cos",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.e",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.floor",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.log",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.mean",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.median",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.pi",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.sin",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.tan",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.functions.time",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"jason.stdlib.add_nested_source",
+  "methods":[{"name":"create","parameterTypes":[] }]
+},
+{
+  "name":"jason.stdlib.add_plan",
+  "methods":[{"name":"<init>","parameterTypes":[] }, {"name":"create","parameterTypes":[] }]
+},
+{
+  "name":"jason.stdlib.drop_desire",
+  "methods":[{"name":"<init>","parameterTypes":[] }, {"name":"create","parameterTypes":[] }]
+},
+{
+  "name":"jason.stdlib.findall",
+  "methods":[{"name":"<init>","parameterTypes":[] }, {"name":"create","parameterTypes":[] }]
+},
+{
+  "name":"jason.stdlib.ground",
+  "methods":[{"name":"create","parameterTypes":[] }]
+},
+{
+  "name":"jason.stdlib.list",
+  "methods":[{"name":"create","parameterTypes":[] }]
+},
+{
+  "name":"jason.stdlib.literal",
+  "methods":[{"name":"create","parameterTypes":[] }]
+},
+{
+  "name":"jason.stdlib.print",
+  "methods":[{"name":"create","parameterTypes":[] }]
+},
+{
+  "name":"jason.stdlib.relevant_plans",
+  "methods":[{"name":"<init>","parameterTypes":[] }, {"name":"create","parameterTypes":[] }]
+},
+{
+  "name":"jason.stdlib.remove_plan",
+  "methods":[{"name":"<init>","parameterTypes":[] }, {"name":"create","parameterTypes":[] }]
+},
+{
+  "name":"jason.stdlib.remove_source_annot",
+  "methods":[{"name":"create","parameterTypes":[] }]
+},
+{
+  "name":"jason.stdlib.send",
+  "methods":[{"name":"<init>","parameterTypes":[] }, {"name":"create","parameterTypes":[] }]
+},
+{
+  "name":"jason.stdlib.signal",
+  "methods":[{"name":"create","parameterTypes":[] }]
+},
+{
+  "name":"jason.stdlib.wait",
+  "methods":[{"name":"<init>","parameterTypes":[] }, {"name":"create","parameterTypes":[] }]
+},
+{
+  "name":"jason.util.Config",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"java.security.SecureRandomParameters"
+},
+{
+  "name":"java.util.concurrent.ForkJoinTask",
+  "fields":[{"name":"aux"}, {"name":"status"}]
+},
+{
+  "name":"java.util.concurrent.atomic.AtomicBoolean",
+  "fields":[{"name":"value"}]
+},
+{
+  "name":"jdk.internal.misc.Unsafe"
+},
+{
+  "name":"sun.security.provider.NativePRNG",
+  "methods":[{"name":"<init>","parameterTypes":[] }, {"name":"<init>","parameterTypes":["java.security.SecureRandomParameters"] }]
+},
+{
+  "name":"sun.security.provider.SHA",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+}
+]

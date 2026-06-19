@@ -1,0 +1,3 @@
+mas counter_test {
+    agent counter_agent : counter_agent.asl
+}

@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panteão BDI Engine - Browser Sandbox Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <!-- CheerpJ 4.3 Loader -->
+    <script src="https://cjrtnc.leaningtech.com/4.3/loader.js"></script>
+    <style>
+        :root {
+            --bg-base: #0B0F19;
+            --bg-surface: #1E293B;
+            --bg-element: #111827;
+            --primary: #3B82F6;
+            --primary-glow: rgba(59, 130, 246, 0.15);
+            --success: #10B981;
+            --success-glow: rgba(16, 185, 129, 0.15);
+            --warning: #F59E0B;
+            --warning-glow: rgba(245, 158, 11, 0.15);
+            --danger: #EF4444;
+            --text-main: #F3F4F6;
+            --text-muted: #9CA3AF;
+            --border: rgba(255, 255, 255, 0.08);
+            --font-sans: 'Inter', sans-serif;
+            --font-mono: 'Fira Code', monospace;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-family: var(--font-sans);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #loader-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, #1E1B4B 0%, #0F172A 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.8s;
+        }
+        #loader-screen.fade-out { opacity: 0; visibility: hidden; pointer-events: none; }
+
+        .loader-card {
+            background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px;
+            padding: 40px 60px; text-align: center; max-width: 500px; width: 90%;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        .loader-spinner { position: relative; width: 80px; height: 80px; margin-bottom: 24px; }
+        .loader-spinner div {
+            box-sizing: border-box; display: block; position: absolute;
+            width: 64px; height: 64px; margin: 8px;
+            border: 5px solid var(--primary); border-radius: 50%;
+            animation: spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+            border-color: var(--primary) transparent transparent transparent;
+        }
+        .loader-spinner div:nth-child(1) { animation-delay: -0.45s; }
+        .loader-spinner div:nth-child(2) { animation-delay: -0.3s; }
+        .loader-spinner div:nth-child(3) { animation-delay: -0.15s; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .loader-title {
+            font-size: 24px; font-weight: 700; letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+        .loader-status { color: var(--text-muted); font-size: 14px; min-height: 20px; }
+
+        header {
+            background-color: var(--bg-surface); border-bottom: 1px solid var(--border);
+            padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; z-index: 10;
+        }
+        .header-brand { display: flex; align-items: center; gap: 12px; }
+        .header-logo {
+            font-weight: 800; font-size: 20px;
+            background: linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .header-badge {
+            background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2);
+            color: var(--primary); font-size: 11px; font-weight: 600;
+            padding: 4px 10px; border-radius: 12px; letter-spacing: 0.5px;
+        }
+        .header-status { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; }
+        .status-dot {
+            width: 8px; height: 8px; background-color: var(--danger);
+            border-radius: 50%; box-shadow: 0 0 8px var(--danger); transition: all 0.3s ease;
+        }
+        .status-dot.active { background-color: var(--success); box-shadow: 0 0 10px var(--success); }
+
+        main { flex: 1; display: grid; grid-template-columns: 360px 1fr; height: calc(100vh - 65px); }
+        .sidebar {
+            background-color: var(--bg-surface); border-right: 1px solid var(--border);
+            padding: 24px; display: flex; flex-direction: column; gap: 24px; overflow-y: auto;
+        }
+        .panel-card {
+            background: rgba(17, 24, 39, 0.4); border: 1px solid var(--border);
+            border-radius: 16px; padding: 20px;
+        }
+        .panel-title {
+            font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+            color: var(--text-muted); margin-bottom: 16px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            background-color: var(--primary); color: var(--text-main); border: none;
+            padding: 10px 16px; border-radius: 10px; font-size: 14px; font-weight: 600;
+            cursor: pointer; transition: all 0.2s ease; width: 100%;
+        }
+        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-success { background-color: var(--success); }
+        .btn-outline {
+            background-color: transparent; border: 1px solid var(--border); color: var(--text-main);
+        }
+        .btn-outline:hover { background-color: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.15); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .input-group { display: flex; gap: 8px; margin-bottom: 12px; }
+        input[type="text"] {
+            flex: 1; background-color: var(--bg-element); border: 1px solid var(--border);
+            border-radius: 10px; color: var(--text-main); padding: 10px 14px;
+            font-size: 14px; font-family: var(--font-mono); transition: border-color 0.2s;
+        }
+        input[type="text"]:focus { outline: none; border-color: var(--primary); }
+
+        .preset-badge-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .preset-badge {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border);
+            color: var(--text-muted); padding: 6px 12px; border-radius: 8px;
+            font-size: 12px; cursor: pointer; transition: all 0.2s; font-family: var(--font-mono);
+        }
+        .preset-badge:hover { background: rgba(59, 130, 246, 0.1); border-color: var(--primary); color: var(--primary); }
+
+        .workspace { display: grid; grid-template-rows: 1fr 240px; height: 100%; }
+        .terminal-container {
+            background-color: var(--bg-element); border-bottom: 1px solid var(--border);
+            padding: 24px; display: flex; flex-direction: column; overflow: hidden;
+        }
+        .terminal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding-bottom: 12px; border-bottom: 1px solid var(--border); margin-bottom: 16px;
+        }
+        .terminal-btn { background: transparent; border: none; color: var(--text-muted); font-size: 13px; cursor: pointer; }
+        .terminal-btn:hover { color: var(--text-main); }
+        .terminal-body {
+            flex: 1; font-family: var(--font-mono); font-size: 13px; line-height: 1.6;
+            overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 8px;
+        }
+        .log-row { display: flex; gap: 12px; }
+        .log-time { color: var(--text-muted); user-select: none; width: 75px; flex-shrink: 0; }
+        .log-text { word-break: break-all; white-space: pre-wrap; }
+        .log-info { color: #A7F3D0; }
+        .log-warn { color: var(--warning); background: var(--warning-glow); border-left: 3px solid var(--warning); padding: 4px 8px; border-radius: 0 4px 4px 0; width: 100%; }
+        .log-error { color: var(--danger); border-left: 3px solid var(--danger); padding: 4px 8px; border-radius: 0 4px 4px 0; width: 100%; }
+        .log-system { color: #818CF8; }
+
+        .action-monitor { background-color: var(--bg-surface); padding: 20px 24px; display: flex; flex-direction: column; overflow: hidden; }
+        .action-grid { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; overflow-y: auto; padding-top: 8px; }
+        .action-item { background: rgba(17, 24, 39, 0.4); border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s; }
+        .action-item.pending { border-color: var(--primary); background: var(--primary-glow); }
+        .action-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .action-agent { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: var(--text-muted); }
+        .action-status { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 6px; }
+        .status-pending { background-color: rgba(59, 130, 246, 0.2); color: var(--primary); border: 1px solid rgba(59, 130, 246, 0.3); }
+        .status-success { background-color: rgba(16, 185, 129, 0.2); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .action-term { font-family: var(--font-mono); font-size: 13px; color: var(--text-main); word-break: break-all; }
+    </style>
+</head>
+<body>
+
+    <div id="loader-screen">
+        <div class="loader-card">
+            <div class="loader-spinner"><div></div><div></div><div></div></div>
+            <div class="loader-title">Panteão BDI Engine</div>
+            <div class="loader-status" id="loader-status">Carregando runtime do CheerpJ...</div>
+        </div>
+    </div>
+
+    <header>
+        <div class="header-brand">
+            <div class="header-logo">PANTEÃO ENGINE</div>
+            <div class="header-badge">SANDBOX WEB</div>
+        </div>
+        <div class="header-status">
+            <span>Status:</span>
+            <div class="status-dot" id="engine-status-dot"></div>
+            <span id="engine-status-text">Desconectado</span>
+        </div>
+    </header>
+
+    <main>
+        <div class="sidebar">
+            <div class="panel-card">
+                <div class="panel-title">Motor BDI</div>
+                <button class="btn" id="btn-start" onclick="startBdiEngine()">Inicializar Agentes</button>
+            </div>
+            <div class="panel-card">
+                <div class="panel-title">Injetor de Percepções</div>
+                <div class="input-group">
+                    <input type="text" id="percept-input" placeholder="ex: test_percept">
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-success" id="btn-add-p" onclick="sendPerception('add')" disabled>Injetar</button>
+                    <button class="btn btn-outline" id="btn-remove-p" onclick="sendPerception('remove')" disabled>Remover</button>
+                </div>
+                <div class="preset-badge-list">
+                    <div class="preset-badge" onclick="setPreset('test_percept')">+ test_percept</div>
+                    <div class="preset-badge" onclick="setPreset('test_system_action')">+ test_system_action</div>
+                </div>
+            </div>
+            <div class="panel-card">
+                <div class="panel-title">Agentes do Sistema</div>
+                <div id="agents-list" style="color: var(--text-muted); font-size: 13px;">
+                    Nenhum agente ativo.
+                </div>
+            </div>
+        </div>
+
+        <div class="workspace">
+            <div class="terminal-container">
+                <div class="terminal-header">
+                    <span style="font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted)">Live Console Logs</span>
+                    <div><button class="terminal-btn" onclick="clearLogs()">Limpar Console</button></div>
+                </div>
+                <div class="terminal-body" id="log-terminal"></div>
+            </div>
+            <div class="action-monitor">
+                <div class="panel-title" style="margin-bottom: 12px;">Ações Interceptadas (Browser Interop)</div>
+                <div class="action-grid" id="action-grid"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ======================== State ========================
+        let libInstance = null;
+        let BrowserBridgeClass = null;
+        let isEngineRunning = false;
+        const JAR_PATH = "/app/build/libs/jason-ipc-all.jar";
+        const MAIN_CLASS = "br.com.kkphoenix.jason.ipc.Launcher";
+
+        // ======================== Log Capture ========================
+        const oldLog = console.log;
+        const oldWarn = console.warn;
+        const oldError = console.error;
+
+        function appendLog(level, text) {
+            const container = document.getElementById('log-terminal');
+            if (!container) return;
+            const row = document.createElement('div');
+            row.className = 'log-row';
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'log-time';
+            const now = new Date();
+            timeSpan.textContent = now.toTimeString().split(' ')[0] + '.' + String(now.getMilliseconds()).padStart(3, '0');
+            const textSpan = document.createElement('span');
+            textSpan.className = `log-text log-${level}`;
+            textSpan.textContent = text;
+            row.appendChild(timeSpan);
+            row.appendChild(textSpan);
+            container.appendChild(row);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        console.log = function(...args) {
+            oldLog.apply(console, args);
+            appendLog('info', args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '));
+        };
+        console.warn = function(...args) {
+            oldWarn.apply(console, args);
+            const msg = args.join(' ');
+            if (msg.includes('Blocked execution') || msg.includes('panteao.browser')) {
+                appendLog('warn', `⚠️ SANDBOX: ${msg}`);
+            } else {
+                appendLog('warn', msg);
+            }
+        };
+        console.error = function(...args) {
+            oldError.apply(console, args);
+            appendLog('error', args.join(' '));
+        };
+
+        function clearLogs() { document.getElementById('log-terminal').innerHTML = ''; }
+        function setPreset(val) { document.getElementById('percept-input').value = val; }
+
+        // ======================== Native method for JS <-> Java bridge ========================
+        // CheerpJ maps native methods using naming convention:
+        // Java_<package_separated_by_underscores>_<ClassName>_<methodName>
+        // For: br.com.kkphoenix.jason.ipc.BrowserBridge.nativeDispatchAction
+        async function Java_br_com_kkphoenix_jason_ipc_BrowserBridge_nativeDispatchAction(lib, agent, actionId, actionTerm) {
+            // Convert Java strings to JS strings
+            const agentStr = String(agent);
+            const idStr = String(actionId);
+            const termStr = String(actionTerm);
+
+            handleAgentAction(agentStr, idStr, termStr);
+        }
+
+        // ======================== CheerpJ Init ========================
+        window.addEventListener('DOMContentLoaded', async () => {
+            const statusEl = document.getElementById('loader-status');
+            try {
+                statusEl.textContent = 'Carregando runtime CheerpJ 4.3 (Java 17)...';
+
+                await cheerpjInit({
+                    version: 17,
+                    status: "none",
+                    natives: {
+                        Java_br_com_kkphoenix_jason_ipc_BrowserBridge_nativeDispatchAction
+                    }
+                });
+
+                appendLog('system', '[CheerpJ] Runtime Java 17 inicializado com sucesso.');
+                statusEl.textContent = 'Carregando biblioteca JAR Panteão...';
+
+                // Load library mode to access BrowserBridge static methods for perceptions
+                libInstance = await cheerpjRunLibrary(JAR_PATH);
+                BrowserBridgeClass = await libInstance.br.com.kkphoenix.jason.ipc.BrowserBridge;
+
+                appendLog('system', '[CheerpJ] JAR carregado. BrowserBridge acessível.');
+                statusEl.textContent = 'Copiando arquivos do projeto para o VFS...';
+
+                // Copy test files from /app/ (read-only) to /files/ (writable) so Java can resolve them
+                const Files = await libInstance.java.nio.file.Files;
+                const Paths = await libInstance.java.nio.file.Paths;
+                const StandardCopyOption = await libInstance.java.nio.file.StandardCopyOption;
+
+                // Create /files/test/ directory
+                const testDir = await Paths.get("/files/test");
+                try { await Files.createDirectories(testDir); } catch(e) { /* may already exist */ }
+
+                // Copy .jcm file
+                const srcJcm = await Paths.get("/app/test/test_ipc.jcm");
+                const dstJcm = await Paths.get("/files/test/test_ipc.jcm");
+                await Files.copy(srcJcm, dstJcm, [StandardCopyOption.REPLACE_EXISTING]);
+
+                // Copy .asl file
+                const srcAsl = await Paths.get("/app/test/test_ipc.asl");
+                const dstAsl = await Paths.get("/files/test/test_ipc.asl");
+                await Files.copy(srcAsl, dstAsl, [StandardCopyOption.REPLACE_EXISTING]);
+
+                appendLog('system', '[VFS] Arquivos test_ipc.jcm e test_ipc.asl copiados para /files/test/');
+
+                // Ready!
+                const dot = document.getElementById('engine-status-dot');
+                dot.style.backgroundColor = '#F59E0B';
+                dot.style.boxShadow = '0 0 8px #F59E0B';
+                document.getElementById('engine-status-text').textContent = 'Pronto para iniciar';
+
+                setTimeout(() => {
+                    document.getElementById('loader-screen').classList.add('fade-out');
+                }, 400);
+
+            } catch (err) {
+                statusEl.innerHTML = `<span style="color:var(--danger)">Erro: ${err.message || err}</span>`;
+                console.error('[CheerpJ Init Error]', err);
+            }
+        });
+
+        // ======================== Start BDI Engine ========================
+        async function startBdiEngine() {
+            if (isEngineRunning) return;
+            document.getElementById('btn-start').disabled = true;
+            document.getElementById('btn-start').textContent = 'Iniciando...';
+            appendLog('system', '[Panteão] Inicializando Motor BDI no browser...');
+
+            try {
+                // Launch main (non-blocking — don't await, since Jason runs indefinitely)
+                const mainPromise = cheerpjRunMain(
+                    MAIN_CLASS,
+                    JAR_PATH,
+                    "/files/test/test_ipc.jcm",
+                    "--browser"
+                );
+
+                // Handle eventual exit
+                mainPromise.then(exitCode => {
+                    appendLog('system', `[Panteão] Motor BDI encerrado com código: ${exitCode}`);
+                    isEngineRunning = false;
+                    document.getElementById('btn-start').disabled = false;
+                    document.getElementById('btn-start').textContent = 'Inicializar Agentes';
+                    document.getElementById('engine-status-dot').classList.remove('active');
+                    document.getElementById('engine-status-text').textContent = 'Encerrado';
+                }).catch(err => {
+                    appendLog('error', `[Panteão] Erro no motor: ${err}`);
+                });
+
+                // Give it a moment to boot
+                await new Promise(r => setTimeout(r, 2000));
+
+                isEngineRunning = true;
+                const dot = document.getElementById('engine-status-dot');
+                dot.classList.add('active');
+                document.getElementById('engine-status-text').textContent = 'Executando';
+                document.getElementById('btn-start').textContent = 'Motor Rodando';
+
+                document.getElementById('btn-add-p').disabled = false;
+                document.getElementById('btn-remove-p').disabled = false;
+
+                document.getElementById('agents-list').innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding: 6px; background: rgba(255,255,255,0.03); border-radius:6px;">
+                        <span style="font-weight:600; color:#A7F3D0;">test_agent</span>
+                        <span style="font-size:11px; background:#10B981; color:#0B0F19; padding:2px 6px; border-radius:4px; font-weight:700;">ATIVO</span>
+                    </div>
+                `;
+
+            } catch (e) {
+                console.error(e);
+                appendLog('error', `Falha ao iniciar motor BDI: ${e.message || e}`);
+                document.getElementById('btn-start').disabled = false;
+                document.getElementById('btn-start').textContent = 'Inicializar Agentes';
+            }
+        }
+
+        // ======================== Agent Action Handler ========================
+        function handleAgentAction(agent, actionId, actionTerm) {
+            appendLog('info', `[Interop JS] Ação capturada: agent=${agent}, action=${actionTerm}`);
+
+            const grid = document.getElementById('action-grid');
+            const card = document.createElement('div');
+            card.className = 'action-item pending';
+            card.id = `card-${actionId}`;
+            card.innerHTML = `
+                <div class="action-meta">
+                    <span class="action-agent">${agent}</span>
+                    <span class="action-status status-pending" id="status-${actionId}">PROCESSANDO</span>
+                </div>
+                <div class="action-term">${actionTerm}</div>
+            `;
+            grid.insertBefore(card, grid.firstChild);
+
+            // Simulate action processing and complete the action back in Java
+            setTimeout(async () => {
+                try {
+                    await BrowserBridgeClass.completeAction(actionId, true);
+
+                    const cardEl = document.getElementById(`card-${actionId}`);
+                    if (cardEl) {
+                        cardEl.classList.remove('pending');
+                        const statusEl = document.getElementById(`status-${actionId}`);
+                        statusEl.className = 'action-status status-success';
+                        statusEl.textContent = 'SUCESSO';
+                    }
+                    appendLog('info', `[Interop JS] Ação ${actionId} completada com SUCESSO.`);
+                } catch (err) {
+                    console.error('[Action Complete Error]', err);
+                }
+            }, 200);
+        }
+
+        // ======================== Perception Injector ========================
+        async function sendPerception(type) {
+            const input = document.getElementById('percept-input');
+            const value = input.value.trim();
+            if (!value) return;
+
+            try {
+                if (type === 'add') {
+                    await BrowserBridgeClass.addPercept(value);
+                    appendLog('system', `[Painel] Percepção injetada: +${value}`);
+                } else {
+                    await BrowserBridgeClass.removePercept(value);
+                    appendLog('system', `[Painel] Percepção removida: -${value}`);
+                }
+                input.value = '';
+            } catch (err) {
+                appendLog('error', `Erro ao manipular percepção: ${err.message || err}`);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "panteao-client",
+  "version": "1.0.0",
+  "description": "JavaScript client for Panteao BDI Coprocessor",
+  "main": "index.js",
+  "type": "commonjs",
+  "license": "MIT",
+  "dependencies": {}
+}
