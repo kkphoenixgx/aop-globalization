@@ -32,7 +32,7 @@ jobs:
       - name: Build TypeScript SDK
         working-directory: sdk/typescript
         run: |
-          npm ci || npm install
+          npm install
           npm run build
 
       - name: Publish TypeScript SDK to npm
