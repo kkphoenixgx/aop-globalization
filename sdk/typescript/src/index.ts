@@ -5,6 +5,50 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { createRequire } from 'module';
 
+function findEngineBinary(binName: string): string | null {
+    const platformPkg = `panteao-engine-${process.platform}-${process.arch}`;
+    const requireFromProject = createRequire(process.cwd() + '/package.json');
+    const searchRoots = [
+        process.cwd(),
+        path.resolve(process.cwd(), 'node_modules'),
+        path.resolve(process.cwd(), '..'),
+        path.resolve(process.cwd(), '..', '..')
+    ];
+
+    const candidates: string[] = [];
+    for (const root of searchRoots) {
+        candidates.push(
+            path.join(root, 'node_modules', platformPkg, 'bin', binName),
+            path.join(root, 'node_modules', platformPkg, binName),
+            path.join(root, platformPkg, 'bin', binName),
+            path.join(root, platformPkg, binName),
+            path.join(root, 'bin', binName),
+            path.join(root, binName)
+        );
+    }
+
+    for (const candidate of candidates) {
+        if (fs.existsSync(candidate)) {
+            return candidate;
+        }
+    }
+
+    try {
+        const pkgPath = requireFromProject.resolve(path.join(platformPkg, 'package.json'));
+        const pkgDir = path.dirname(pkgPath);
+        for (const candidate of [
+            path.join(pkgDir, 'bin', binName),
+            path.join(pkgDir, binName)
+        ]) {
+            if (fs.existsSync(candidate)) {
+                return candidate;
+            }
+        }
+    } catch (e) {}
+
+    return null;
+}
+
 export interface BdiClientOptions {
     host?: string;
     port?: number;
@@ -15,8 +59,6 @@ export interface BdiClientOptions {
 }
 
 export type ActionCallback = (args: string[], respond: (success: boolean) => void) => void;
-
-const requireFromProject = createRequire(process.cwd() + '/package.json');
 
 function getFreePort(): Promise<number> {
     return new Promise((resolve, reject) => {
@@ -58,35 +100,12 @@ export class BdiClient extends EventEmitter {
         if (!binPath) {
             const isWin = process.platform === 'win32';
             const binName = isWin ? 'panteao-engine.exe' : 'panteao-engine';
-            
-            // Try to resolve from platform-specific package first
-            const platformPkg = `panteao-engine-${process.platform}-${process.arch}`;
-            let resolvedPath: string | null = null;
-            try {
-                const pkgPath = requireFromProject.resolve(path.join(platformPkg, 'package.json'));
-                const pkgDir = path.dirname(pkgPath);
-                const candidate = path.join(pkgDir, 'bin', binName);
-                const candidateFallback = path.join(pkgDir, binName);
-                if (fs.existsSync(candidate)) {
-                    resolvedPath = candidate;
-                } else if (fs.existsSync(candidateFallback)) {
-                    resolvedPath = candidateFallback;
-                }
-            } catch (e) {
-                // Platform package not installed or resolved
-            }
-
+            const resolvedPath = findEngineBinary(binName);
             if (resolvedPath) {
                 binPath = resolvedPath;
             } else {
-                // Fallback to local paths
-                const candidate1 = path.join(__dirname, binName);
-                const candidate2 = path.join(__dirname, 'bin', binName);
-                if (fs.existsSync(candidate1)) {
-                    binPath = candidate1;
-                } else if (fs.existsSync(candidate2)) {
-                    binPath = candidate2;
-                } else {
+                binPath = path.join(process.cwd(), 'node_modules', '.bin', binName);
+                if (!fs.existsSync(binPath)) {
                     binPath = binName;
                 }
             }

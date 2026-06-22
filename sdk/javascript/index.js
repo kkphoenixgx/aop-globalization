@@ -5,6 +5,50 @@ const child_process = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
+function findEngineBinary(binName) {
+    const platformPkg = `panteao-engine-${process.platform}-${process.arch}`;
+    const searchRoots = [
+        process.cwd(),
+        path.resolve(process.cwd(), 'node_modules'),
+        __dirname,
+        path.resolve(__dirname, '..'),
+        path.resolve(__dirname, '..', '..')
+    ];
+
+    const candidates = [];
+    for (const root of searchRoots) {
+        candidates.push(
+            path.join(root, 'node_modules', platformPkg, 'bin', binName),
+            path.join(root, 'node_modules', platformPkg, binName),
+            path.join(root, platformPkg, 'bin', binName),
+            path.join(root, platformPkg, binName),
+            path.join(root, 'bin', binName),
+            path.join(root, binName)
+        );
+    }
+
+    for (const candidate of candidates) {
+        if (fs.existsSync(candidate)) {
+            return candidate;
+        }
+    }
+
+    try {
+        const pkgPath = require.resolve(path.join(platformPkg, 'package.json'));
+        const pkgDir = path.dirname(pkgPath);
+        for (const candidate of [
+            path.join(pkgDir, 'bin', binName),
+            path.join(pkgDir, binName)
+        ]) {
+            if (fs.existsSync(candidate)) {
+                return candidate;
+            }
+        }
+    } catch (e) {}
+
+    return null;
+}
+
 class Panteao extends EventEmitter {
     constructor(options = {}) {
         super();
@@ -12,35 +56,8 @@ class Panteao extends EventEmitter {
         this.port = options.port || 0; 
         this.project = options.project || null;
         
-        // Resolve binary location inside the package structure
         const binName = process.platform === 'win32' ? 'panteao-engine.exe' : 'panteao-engine';
-        
-        // Try to resolve from platform-specific package first
-        const platformPkg = `panteao-engine-${process.platform}-${process.arch}`;
-        let resolvedPath = null;
-        try {
-            const pkgPath = require.resolve(path.join(platformPkg, 'package.json'));
-            const pkgDir = path.dirname(pkgPath);
-            const candidate = path.join(pkgDir, 'bin', binName);
-            const candidateFallback = path.join(pkgDir, binName);
-            if (fs.existsSync(candidate)) {
-                resolvedPath = candidate;
-            } else if (fs.existsSync(candidateFallback)) {
-                resolvedPath = candidateFallback;
-            }
-        } catch (e) {
-            // Platform package not installed or resolved
-        }
-
-        if (resolvedPath) {
-            this.binPath = resolvedPath;
-        } else {
-            // Fallback to local paths
-            this.binPath = path.join(__dirname, 'bin', binName);
-            if (!fs.existsSync(this.binPath)) {
-                this.binPath = path.join(__dirname, binName);
-            }
-        }
+        this.binPath = findEngineBinary(binName) || path.join(process.cwd(), 'node_modules', '.bin', binName);
         
         this.autoReconnect = options.autoReconnect ?? (this.project ? false : true);
         this.reconnectInterval = options.reconnectInterval || 2000;
