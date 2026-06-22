@@ -1,0 +1,85 @@
+name: Build & Publish Engine Binaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Engine version to publish (e.g. 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-publish:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            pkg: panteao-engine-linux-x64
+            engine_dir: sdk/engines/linux-x64
+          - os: windows-latest
+            pkg: panteao-engine-win32-x64
+            engine_dir: sdk/engines/win32-x64
+          - os: macos-latest
+            pkg: panteao-engine-darwin-arm64
+            engine_dir: sdk/engines/darwin-arm64
+          - os: macos-13
+            pkg: panteao-engine-darwin-x64
+            engine_dir: sdk/engines/darwin-x64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup GraalVM
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '21'
+          distribution: 'graalvm'
+          native-image-job-reports: 'true'
+
+      - name: Build native binary
+        run: ./gradlew copyNativeEngine
+        shell: bash
+
+      - name: Copy binary to engine package (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p ${{ matrix.engine_dir }}/bin
+          cp bin/panteao-engine ${{ matrix.engine_dir }}/bin/panteao-engine
+          chmod +x ${{ matrix.engine_dir }}/bin/panteao-engine
+
+      - name: Copy binary to engine package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "${{ matrix.engine_dir }}/bin"
+          Copy-Item "bin/panteao-engine.exe" "${{ matrix.engine_dir }}/bin/panteao-engine.exe"
+
+      - name: Update engine package version
+        working-directory: ${{ matrix.engine_dir }}
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json','utf8'));
+            pkg.version = '${{ github.event.inputs.version }}';
+            if (pkg.description) pkg.description = pkg.description.replace(' (coming soon)','');
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+          "
+        shell: bash
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Publish engine package
+        working-directory: ${{ matrix.engine_dir }}
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

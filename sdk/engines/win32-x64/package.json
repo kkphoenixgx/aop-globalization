@@ -1,0 +1,8 @@
+{
+  "name": "panteao-engine-win32-x64",
+  "version": "0.0.1",
+  "description": "Panteao GraalVM native engine binary for Windows x64 (coming soon)",
+  "os": ["win32"],
+  "cpu": ["x64"],
+  "license": "MIT"
+}

@@ -16,7 +16,7 @@ class Panteao extends EventEmitter {
         const binName = process.platform === 'win32' ? 'panteao-engine.exe' : 'panteao-engine';
         
         // Try to resolve from platform-specific package first
-        const platformPkg = `@panteao/engine-${process.platform}-${process.arch}`;
+        const platformPkg = `panteao-engine-${process.platform}-${process.arch}`;
         let resolvedPath = null;
         try {
             const pkgPath = require.resolve(path.join(platformPkg, 'package.json'));

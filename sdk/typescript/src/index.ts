@@ -57,7 +57,7 @@ export class BdiClient extends EventEmitter {
             const binName = isWin ? 'panteao-engine.exe' : 'panteao-engine';
             
             // Try to resolve from platform-specific package first
-            const platformPkg = `@panteao/engine-${process.platform}-${process.arch}`;
+            const platformPkg = `panteao-engine-${process.platform}-${process.arch}`;
             let resolvedPath: string | null = null;
             try {
                 const pkgPath = require.resolve(path.join(platformPkg, 'package.json'));

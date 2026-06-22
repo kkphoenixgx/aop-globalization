@@ -27,9 +27,9 @@
     "@types/node": "^20.0.0"
   },
   "optionalDependencies": {
-    "@panteao/engine-win32-x64": "^1.0.0",
-    "@panteao/engine-linux-x64": "^1.0.0",
-    "@panteao/engine-darwin-arm64": "^1.0.0",
-    "@panteao/engine-darwin-x64": "^1.0.0"
+    "panteao-engine-win32-x64": "^1.0.0",
+    "panteao-engine-linux-x64": "^1.0.0",
+    "panteao-engine-darwin-arm64": "^1.0.0",
+    "panteao-engine-darwin-x64": "^1.0.0"
   }
 }
