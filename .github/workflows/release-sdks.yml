@@ -2,13 +2,18 @@ name: Release & Publish SDKs
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version for the SDKs (e.g. 1.1.0)'
+        required: true
+        default: '1.1.0'
 
 permissions:
   contents: write
 
 jobs:
-  release-and-publish:
-    name: GitHub Release & Publish to npm
+  publish-sdks:
+    name: Publish JS and TS SDKs
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -20,11 +25,33 @@ jobs:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
 
+      # ── JAVASCRIPT SDK ──────────────────────────────────────────────────────
+      - name: Bump JavaScript SDK version
+        working-directory: sdk/javascript
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json','utf8'));
+            pkg.version = '${{ inputs.version }}';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
       - name: Publish JavaScript SDK to npm
         working-directory: sdk/javascript
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # ── TYPESCRIPT SDK ──────────────────────────────────────────────────────
+      - name: Bump TypeScript SDK version
+        working-directory: sdk/typescript
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json','utf8'));
+            pkg.version = '${{ inputs.version }}';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
 
       - name: Build TypeScript SDK
         working-directory: sdk/typescript
@@ -38,10 +65,12 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
+      # ── GITHUB RELEASE ──────────────────────────────────────────────────────
+      - name: Create GitHub Release and Tag
+        uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ inputs.version }}
+          name: Release v${{ inputs.version }}
           draft: false
           prerelease: false
           generate_release_notes: true
