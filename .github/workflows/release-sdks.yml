@@ -1,4 +1,4 @@
-name: Build, Package and Release SDKs
+name: Release & Publish SDKs
 
 on:
   push:
@@ -16,24 +16,6 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
-      - name: Package SDKs as release assets
-        run: |
-          mkdir -p dist
-          tar -czf dist/panteao-sdk-javascript.tar.gz -C sdk/javascript .
-          tar -czf dist/panteao-sdk-typescript.tar.gz -C sdk/typescript .
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            dist/panteao-sdk-javascript.tar.gz
-            dist/panteao-sdk-typescript.tar.gz
-          draft: false
-          prerelease: false
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -58,3 +40,13 @@ jobs:
         run: npm publish --access public || echo "Already published"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
