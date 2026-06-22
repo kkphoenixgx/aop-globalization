@@ -1,35 +1,48 @@
-name: Build & Publish Engine Binaries
+name: Build Engine Binaries
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Engine version to publish (e.g. 1.0.0)'
+        description: 'Engine version (e.g. 1.1.0)'
         required: true
-        default: '1.0.0'
+        default: '1.1.0'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  build-and-publish:
+  build:
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     strategy:
+      fail-fast: false   # ← uma plataforma falhar não cancela as outras
       matrix:
         include:
           - os: ubuntu-latest
             pkg: panteao-engine-linux-x64
             engine_dir: sdk/engines/linux-x64
+            bin_name: panteao-engine
+            artifact_name: engine-linux-x64
+
           - os: windows-latest
             pkg: panteao-engine-win32-x64
             engine_dir: sdk/engines/win32-x64
+            bin_name: panteao-engine.exe
+            artifact_name: engine-win32-x64
+
           - os: macos-latest
             pkg: panteao-engine-darwin-arm64
             engine_dir: sdk/engines/darwin-arm64
+            bin_name: panteao-engine
+            artifact_name: engine-darwin-arm64
+
           - os: macos-13
             pkg: panteao-engine-darwin-x64
             engine_dir: sdk/engines/darwin-x64
+            bin_name: panteao-engine
+            artifact_name: engine-darwin-x64
 
     steps:
       - name: Checkout
@@ -46,39 +59,103 @@ jobs:
         run: ./gradlew copyNativeEngine
         shell: bash
 
-      - name: Copy binary to engine package (Linux/macOS)
+      # ── Prepara o pacote npm do engine ──────────────────────────────────────
+
+      - name: Copy binary into engine package (Linux/macOS)
         if: runner.os != 'Windows'
         run: |
           mkdir -p ${{ matrix.engine_dir }}/bin
           cp bin/panteao-engine ${{ matrix.engine_dir }}/bin/panteao-engine
           chmod +x ${{ matrix.engine_dir }}/bin/panteao-engine
 
-      - name: Copy binary to engine package (Windows)
+      - name: Copy binary into engine package (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path "${{ matrix.engine_dir }}/bin"
-          Copy-Item "bin/panteao-engine.exe" "${{ matrix.engine_dir }}/bin/panteao-engine.exe"
+          Copy-Item "bin/${{ matrix.bin_name }}" "${{ matrix.engine_dir }}/bin/${{ matrix.bin_name }}"
 
-      - name: Update engine package version
+      - name: Bump package version
         working-directory: ${{ matrix.engine_dir }}
+        shell: bash
         run: |
           node -e "
             const fs = require('fs');
             const pkg = JSON.parse(fs.readFileSync('package.json','utf8'));
             pkg.version = '${{ github.event.inputs.version }}';
-            if (pkg.description) pkg.description = pkg.description.replace(' (coming soon)','');
-            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+            pkg.description = (pkg.description || '').replace(' (coming soon)', '');
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
           "
+
+      # ── Upload do binário como artefato do workflow ─────────────────────────
+
+      - name: Upload engine artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}-${{ github.event.inputs.version }}
+          path: ${{ matrix.engine_dir }}/
+          retention-days: 30
+
+  # ── Job separado: publica após todos os builds terminarem ──────────────────
+
+  publish:
+    name: Publish ${{ matrix.pkg }} to npm
+    needs: build
+    runs-on: ubuntu-latest
+    if: always()   # roda mesmo se algum build falhar (publica os que tiverem sucesso)
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - pkg: panteao-engine-linux-x64
+            artifact_name: engine-linux-x64
+            engine_dir: sdk/engines/linux-x64
+
+          - pkg: panteao-engine-win32-x64
+            artifact_name: engine-win32-x64
+            engine_dir: sdk/engines/win32-x64
+
+          - pkg: panteao-engine-darwin-arm64
+            artifact_name: engine-darwin-arm64
+            engine_dir: sdk/engines/darwin-arm64
+
+          - pkg: panteao-engine-darwin-x64
+            artifact_name: engine-darwin-x64
+            engine_dir: sdk/engines/darwin-x64
+
+    steps:
+      - name: Download engine artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}-${{ github.event.inputs.version }}
+          path: ${{ matrix.engine_dir }}
+        continue-on-error: true   # pula se o build daquela plataforma falhou
+
+      - name: Check if artifact exists
+        id: check
+        run: |
+          if [ -f "${{ matrix.engine_dir }}/package.json" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Artifact not found for ${{ matrix.pkg }} — skipping publish"
+          fi
         shell: bash
 
       - name: Setup Node.js
+        if: steps.check.outputs.exists == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Publish engine package
+      - name: Make binary executable
+        if: steps.check.outputs.exists == 'true'
+        run: chmod +x ${{ matrix.engine_dir }}/bin/* 2>/dev/null || true
+        shell: bash
+
+      - name: Publish to npm
+        if: steps.check.outputs.exists == 'true'
         working-directory: ${{ matrix.engine_dir }}
         run: npm publish --access public
         env:

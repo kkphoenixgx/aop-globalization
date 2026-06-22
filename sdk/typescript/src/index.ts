@@ -3,6 +3,7 @@ import { EventEmitter } from 'events';
 import * as child_process from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
+import { createRequire } from 'module';
 
 export interface BdiClientOptions {
     host?: string;
@@ -14,6 +15,8 @@ export interface BdiClientOptions {
 }
 
 export type ActionCallback = (args: string[], respond: (success: boolean) => void) => void;
+
+const requireFromProject = createRequire(process.cwd() + '/package.json');
 
 function getFreePort(): Promise<number> {
     return new Promise((resolve, reject) => {
@@ -60,7 +63,7 @@ export class BdiClient extends EventEmitter {
             const platformPkg = `panteao-engine-${process.platform}-${process.arch}`;
             let resolvedPath: string | null = null;
             try {
-                const pkgPath = require.resolve(path.join(platformPkg, 'package.json'));
+                const pkgPath = requireFromProject.resolve(path.join(platformPkg, 'package.json'));
                 const pkgDir = path.dirname(pkgPath);
                 const candidate = path.join(pkgDir, 'bin', binName);
                 const candidateFallback = path.join(pkgDir, binName);
