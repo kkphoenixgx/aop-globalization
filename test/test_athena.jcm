@@ -1,0 +1,16 @@
+mas athena_test {
+
+  agent aurora : bob.asl {
+    ag-arch: br.com.kkphoenix.Athena
+  }
+
+  agent beholder : bob.asl {
+    ag-arch: jason.Argo, br.com.kkphoenix.Athena
+  }
+
+  agent dedalo : bob.asl {
+    ag-arch: jason.Argo
+  }
+
+  uses package: jasonEmbedded "com.github.chon-group:jasonEmbedded:+" 
+}

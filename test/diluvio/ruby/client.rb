@@ -1,35 +1,27 @@
-require 'socket'
-require 'json'
+require_relative 'sdk/lib/panteao_client'
 
-host = '127.0.0.1'
-port = 44444
-start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+puts "[DILUVIO] Ruby client starting"
+client = Panteao::BdiClient.new('127.0.0.1', 44444)
 
-puts '[DILUVIO] Ruby client starting'
+Thread.new do
+  sleep 5
+  puts "[DILUVIO] TIMEOUT"
+  client.close
+  exit(1)
+end
+
+client.register_action("redirect_buses_to") do |args, respond|
+  puts "[DILUVIO] Action handled: redirect_buses_to"
+  respond.call(true)
+  puts "[DILUVIO] SUCCESS"
+  client.close
+  exit(0)
+end
+
 begin
-  socket = TCPSocket.new(host, port)
-  elapsed = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000
-  puts "[DILUVIO] Connected in #{elapsed.round(2)}ms"
-
-  sleep 1
-
-  percept = "{\"type\":\"perception\",\"action\":\"add\",\"perception\":\"transport_needed(ponto_a)\"}\n"
-  puts "[DILUVIO] Sending: #{percept.strip}"
-  socket.puts(percept)
-
-  while line = socket.gets
-    puts "[DILUVIO] Received: #{line.strip}"
-    if line.include?('"type":"action"')
-      msg = JSON.parse(line)
-      id = msg['id']
-      response = "{\"type\":\"action_result\",\"id\":\"#{id}\",\"success\":true}\n"
-      puts "[DILUVIO] Sending result: #{response.strip}"
-      socket.puts(response)
-      puts '[DILUVIO] SUCCESS'
-      break
-    end
-  end
-  socket.close
+  puts "[DILUVIO] Connected!"
+  client.send_msg("tell", "external", "orquestrador", "transport_needed(point4)")
+  sleep
 rescue => e
   puts "[DILUVIO] FAILURE: #{e.message}"
   exit(1)

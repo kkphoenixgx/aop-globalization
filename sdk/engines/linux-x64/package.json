@@ -1,0 +1,14 @@
+{
+  "name": "@panteao/engine-linux-x64",
+  "version": "1.0.0",
+  "description": "Panteao GraalVM native engine binary for Linux x64",
+  "os": ["linux"],
+  "cpu": ["x64"],
+  "license": "MIT",
+  "bin": {
+    "panteao-engine": "./bin/panteao-engine"
+  },
+  "files": [
+    "bin/panteao-engine"
+  ]
+}

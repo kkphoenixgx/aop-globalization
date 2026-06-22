@@ -23,7 +23,7 @@ static constexpr int         ENGINE_PORT = 44444;
 static constexpr int         TIMEOUT_SEC = 5;
 
 static const std::string PERCEPTION_MSG =
-    "{\"type\":\"perception\",\"action\":\"add\",\"perception\":\"gate_pressure(gate_02,90)\"}\n";
+    "{\"type\":\"message\",\"performative\":\"tell\",\"sender\":\"external\",\"receiver\":\"orquestrador\",\"content\":\"gate_pressure(gate_02,90)\"}\n";
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -1,7 +1,7 @@
 {
-  "name": "@panteao/client",
+  "name": "panteaots",
   "version": "1.0.0",
-  "description": "TypeScript/JavaScript client SDK for Panteao BDI Coprocessor",
+  "description": "TypeScript client for the Panteao BDI agent engine",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/cjs/index.d.ts",
@@ -10,14 +10,26 @@
       "types": "./dist/cjs/index.d.ts",
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.js"
+    },
+    "./types": {
+      "types": "./dist/cjs/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
     }
   },
   "scripts": {
     "build": "tsc && tsc -p tsconfig.cjs.json && echo '{\"type\": \"module\"}' > dist/esm/package.json && echo '{\"type\": \"commonjs\"}' > dist/cjs/package.json"
   },
+  "keywords": ["bdi", "agents", "jason", "ai", "multi-agent", "typescript"],
   "license": "MIT",
   "devDependencies": {
     "typescript": "^5.0.0",
     "@types/node": "^20.0.0"
+  },
+  "optionalDependencies": {
+    "@panteao/engine-win32-x64": "^1.0.0",
+    "@panteao/engine-linux-x64": "^1.0.0",
+    "@panteao/engine-darwin-arm64": "^1.0.0",
+    "@panteao/engine-darwin-x64": "^1.0.0"
   }
 }

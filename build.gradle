@@ -3,6 +3,7 @@ plugins {
     id 'application'
     id 'com.gradleup.shadow' version '8.3.5'
     id 'org.graalvm.buildtools.native' version '0.10.4'
+
 }
 
 group = 'br.com.kkphoenix'
@@ -11,16 +12,32 @@ version = '1.0.0'
 repositories {
     mavenCentral()
     maven { url "https://raw.githubusercontent.com/jacamo-lang/mvn-repo/master" }
+    maven { url "https://jitpack.io" }
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
 }
 
 dependencies {
+    implementation fileTree(dir: 'lib', include: ['*.jar'])
     implementation 'io.github.jason-lang:jason-interpreter:3.2.1'
+    implementation('org.jacamo:moise:0.12') {
+        exclude group: 'org.jacamo', module: 'npl'
+        exclude group: 'org.jacamo', module: 'jaca'
+        exclude group: 'org.jason-lang', module: 'jason'
+    }
+    implementation 'org.jacamo:cartago:3.1'
     implementation 'org.json:json:20230227'
+    implementation('com.github.chon-group:jasonEmbedded:+') {
+        exclude group: 'io.github.jason-lang', module: 'jason-interpreter'
+        exclude group: 'br.pucrio.inf.lac', module: 'contextnet'
+        exclude group: 'com.github.chon-group', module: 'Concierge'
+        exclude group: 'com.github.chon-group', module: 'Hermes'
+    }
+
 }
 
 application {
@@ -37,6 +54,7 @@ graalvmNative {
         }
     }
 }
+
 
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
@@ -68,20 +86,20 @@ task generateReflectionConfig {
     doLast {
         def reflectConfigFile = file("src/main/resources/META-INF/native-image/reflect-config.json")
         def jasonJar = configurations.runtimeClasspath.files.find { it.name.contains("jason-interpreter") }
+        def jasonEmbeddedJar = configurations.runtimeClasspath.files.find { it.name.contains("jasonEmbedded") }
         
         def baseConfig = [
             [name: "br.com.kkphoenix.jason.ipc.Launcher", allDeclaredConstructors: true, allPublicConstructors: true, allDeclaredMethods: true, allPublicMethods: true],
             [name: "br.com.kkphoenix.jason.ipc.IPCAgArch", allDeclaredConstructors: true, allPublicConstructors: true, allDeclaredMethods: true, allPublicMethods: true],
             [name: "br.com.kkphoenix.jason.ipc.IPCEnvironment", allDeclaredConstructors: true, allPublicConstructors: true, allDeclaredMethods: true, allPublicMethods: true],
-            [name: "br.com.kkphoenix.jason.ipc.BrowserAgArch", allDeclaredConstructors: true, allPublicConstructors: true, allDeclaredMethods: true, allPublicMethods: true],
-            [name: "br.com.kkphoenix.jason.ipc.BrowserEnvironment", allDeclaredConstructors: true, allPublicConstructors: true, allDeclaredMethods: true, allPublicMethods: true],
-            [name: "br.com.kkphoenix.jason.ipc.BrowserBridge", allDeclaredConstructors: true, allPublicConstructors: true, allDeclaredMethods: true, allPublicMethods: true],
             [name: "jason.infra.local.RunLocalMAS", allDeclaredConstructors: true, allPublicConstructors: true, allDeclaredFields: true, allPublicFields: true, allDeclaredMethods: true, allPublicMethods: true],
             [name: "jason.bb.DefaultBeliefBase", allDeclaredConstructors: true, allPublicConstructors: true],
             [name: "jason.asSemantics.Agent", allDeclaredConstructors: true, allPublicConstructors: true, allDeclaredMethods: true, allPublicMethods: true],
             [name: "jason.asSemantics.TransitionSystem", allDeclaredConstructors: true, allPublicConstructors: true, allDeclaredMethods: true, allPublicMethods: true],
             [name: "jason.environment.Environment", allDeclaredConstructors: true, allPublicConstructors: true, allDeclaredMethods: true, allPublicMethods: true],
-            [name: "jason.architecture.AgArch", allDeclaredConstructors: true, allPublicConstructors: true, allDeclaredMethods: true, allPublicMethods: true]
+            [name: "jason.architecture.AgArch", allDeclaredConstructors: true, allPublicConstructors: true, allDeclaredMethods: true, allPublicMethods: true],
+            [name: "br.com.kkphoenix.Athena", allDeclaredConstructors: true, allPublicConstructors: true, allDeclaredMethods: true, allPublicMethods: true],
+            [name: "jason.Argo", allDeclaredConstructors: true, allPublicConstructors: true, allDeclaredMethods: true, allPublicMethods: true]
         ]
         
         // Auto-discover local Java classes in src/main/java
@@ -108,7 +126,7 @@ task generateReflectionConfig {
             def entries = zip.entries()
             while (entries.hasMoreElements()) {
                 def entry = entries.nextElement()
-                def prefixes = ["jason/stdlib/", "jason/functions/", "jason/bb/", "jason/architecture/", "jason/infra/", "jason/control/"]
+                def prefixes = ["jason/stdlib/", "jason/functions/", "jason/bb/", "jason/architecture/", "jason/infra/", "jason/control/", "jason/Argo.class", "jason/Mailer.class"]
                 def matched = prefixes.find { entry.name.startsWith(it) }
                 if (matched != null && entry.name.endsWith(".class") && !entry.name.contains('$')) {
                     def className = entry.name.replace('/', '.').replace('.class', '')
@@ -122,6 +140,48 @@ task generateReflectionConfig {
                 }
             }
             zip.close()
+        }
+
+        if (jasonEmbeddedJar != null && jasonEmbeddedJar.exists()) {
+            def zip = new ZipFile(jasonEmbeddedJar)
+            def entries = zip.entries()
+            while (entries.hasMoreElements()) {
+                def entry = entries.nextElement()
+                if (entry.name.endsWith(".class") && !entry.name.contains('$')) {
+                    def className = entry.name.replace('/', '.').replace('.class', '')
+                    baseConfig.add([
+                        name: className,
+                        allDeclaredConstructors: true,
+                        allPublicConstructors: true,
+                        allDeclaredMethods: true,
+                        allPublicMethods: true
+                    ])
+                }
+            }
+            zip.close()
+        }
+
+        // Auto-discover classes from JAR files in the 'lib' directory
+        def libDir = file("lib")
+        if (libDir.exists() && libDir.isDirectory()) {
+            fileTree(dir: 'lib', include: '**/*.jar').each { jarFile ->
+                def zip = new ZipFile(jarFile)
+                def entries = zip.entries()
+                while (entries.hasMoreElements()) {
+                    def entry = entries.nextElement()
+                    if (entry.name.endsWith(".class") && !entry.name.contains('$')) {
+                        def className = entry.name.replace('/', '.').replace('.class', '')
+                        baseConfig.add([
+                            name: className,
+                            allDeclaredConstructors: true,
+                            allPublicConstructors: true,
+                            allDeclaredMethods: true,
+                            allPublicMethods: true
+                        ])
+                    }
+                }
+                zip.close()
+            }
         }
         
         // Remove duplicates dynamically
@@ -139,3 +199,4 @@ tasks.named('nativeCompile').configure {
 tasks.named('processResources').configure {
     dependsOn generateReflectionConfig
 }
+

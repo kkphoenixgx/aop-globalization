@@ -45,7 +45,9 @@ public class IPCEnvironment extends Environment {
 
     private void startServer(int port) {
         try {
-            serverSocket = new ServerSocket(port);
+            serverSocket = new ServerSocket();
+            serverSocket.setReuseAddress(true);
+            serverSocket.bind(new java.net.InetSocketAddress(port));
             logger.info("IPC Environment Server started on port " + port + ". Waiting for client...");
             
             clientSocket = serverSocket.accept();
@@ -57,6 +59,27 @@ public class IPCEnvironment extends Environment {
             listenerThread = new Thread(this::listenToClient);
             listenerThread.setDaemon(true);
             listenerThread.start();
+
+            Thread readyNotifier = new Thread(() -> {
+                try {
+                    while (running) {
+                        jason.infra.local.BaseLocalMAS runner = jason.infra.centralised.RunCentralisedMAS.getRunner();
+                        if (runner != null && runner.getAgs() != null && !runner.getAgs().isEmpty()) {
+                            Thread.sleep(100);
+                            JSONObject readyMsg = new JSONObject();
+                            readyMsg.put("type", "mas_ready");
+                            sendToClient(readyMsg);
+                            logger.info("Sent mas_ready event to client.");
+                            break;
+                        }
+                        Thread.sleep(50);
+                    }
+                } catch (Exception e) {
+                    logger.warning("Error checking MAS readiness: " + e.getMessage());
+                }
+            });
+            readyNotifier.setDaemon(true);
+            readyNotifier.start();
             
         } catch (IOException e) {
             logger.severe("Failed to start IPC Server: " + e.getMessage());
@@ -78,41 +101,31 @@ public class IPCEnvironment extends Environment {
 
     private synchronized void handleMessage(String line) {
         try {
-            logger.info("IPC Raw Line Received: " + line);
+            logger.fine("IPC Raw Line Received: " + line);
             JSONObject json = new JSONObject(line);
             String type = json.optString("type");
-            if ("perception".equals(type)) {
-                String action = json.optString("action");
-                String value = json.optString("perception");
-                Literal p = ASSyntax.parseLiteral(value);
-                if ("add".equals(action)) {
-                    addPercept(p);
-                } else if ("remove".equals(action)) {
-                    removePercept(p);
-                }
-            } else if ("action_result".equals(type)) {
-                String actionId = json.optString("id");
-                boolean success = json.optBoolean("success", false);
-                IPCAgArch.handleActionResult(actionId, success);
-            } else if ("message".equals(type)) {
+
+            if ("message".equals(type)) {
                 String sender = json.optString("sender", "external");
                 String receiver = json.optString("receiver");
                 String performative = json.optString("performative", "tell");
                 String content = json.optString("content");
-                
+
                 jason.asSemantics.Message msg = new jason.asSemantics.Message(
                     performative,
                     sender,
                     receiver,
                     jason.asSyntax.ASSyntax.parseTerm(content)
                 );
-                
+
                 jason.infra.local.LocalAgArch arch = jason.infra.centralised.RunCentralisedMAS.getRunner().getAg(receiver);
                 if (arch != null) {
                     arch.getTS().getC().addMsg(msg);
                 } else {
-                    logger.warning("Receiver agent not found for IPC speech act: " + receiver);
+                    logger.warning("Receiver agent not found: " + receiver);
                 }
+            } else {
+                logger.warning("Unknown message type from client: " + type);
             }
         } catch (Exception e) {
             logger.severe("Error handling message: " + e.getMessage() + " | Line: " + line);

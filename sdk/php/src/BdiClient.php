@@ -5,12 +5,86 @@ namespace Panteao;
 class BdiClient {
     private $socket;
     private $handlers = [];
+    private $process;
 
-    public function __construct(string $host = '127.0.0.1', int $port = 44444) {
-        $this->socket = fsockopen($host, $port, $errno, $errstr, 5);
+    private static function getFreePort(): int {
+        $server = stream_socket_server("tcp://127.0.0.1:0", $errno, $errstr);
+        if (!$server) return 44444;
+        $name = stream_socket_get_name($server, false);
+        fclose($server);
+        if ($name) {
+            $parts = explode(':', $name);
+            return (int)end($parts);
+        }
+        return 44444;
+    }
+
+    private static function findBinary(): string {
+        $isWin = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN');
+        $binName = $isWin ? 'panteao-engine.exe' : 'panteao-engine';
+        
+        $currentDir = __DIR__;
+        $cand1 = $currentDir . '/' . $binName;
+        if (file_exists($cand1)) return $cand1;
+        $cand2 = $currentDir . '/bin/' . $binName;
+        if (file_exists($cand2)) return $cand2;
+        
+        $cwd = getcwd();
+        $cand3 = $cwd . '/' . $binName;
+        if (file_exists($cand3)) return $cand3;
+        $cand4 = $cwd . '/bin/' . $binName;
+        if (file_exists($cand4)) return $cand4;
+        
+        return $binName;
+    }
+
+    public function __construct(string $host = '127.0.0.1', int $port = 0, ?string $project = null) {
+        $actualHost = empty($host) ? '127.0.0.1' : $host;
+        if ($project !== null) {
+            if ($port === 0) {
+                $port = self::getFreePort();
+            }
+            $bin = self::findBinary();
+            $descriptorspec = [
+                0 => ["pipe", "r"],
+                1 => ["file", "/dev/null", "w"],
+                2 => ["file", "/dev/null", "w"]
+            ];
+            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                $descriptorspec[1] = ["file", "NUL", "w"];
+                $descriptorspec[2] = ["file", "NUL", "w"];
+            }
+            $this->process = proc_open([$bin, $project, '--port', (string)$port], $descriptorspec, $pipes);
+            usleep(800000);
+        } else if ($port === 0) {
+            $port = 44444;
+        }
+
+        $this->socket = fsockopen($actualHost, $port, $errno, $errstr, 5);
         if (!$this->socket) {
+            if ($this->process) proc_terminate($this->process);
             throw new \Exception("Could not connect to Panteao: $errstr");
         }
+
+        while (!feof($this->socket)) {
+            $line = fgets($this->socket);
+            if ($line === false) {
+                if ($this->process) proc_terminate($this->process);
+                throw new \Exception("Connection closed during handshake");
+            }
+            if (str_contains($line, '"type":"mas_ready"')) {
+                break;
+            }
+        }
+    }
+
+    public function __destruct() {
+        $this->close();
+    }
+
+        public function sendMsg(string $performative, string $sender, string $receiver, string $content): void {
+        $msg = json_encode(['type' => 'message', 'performative' => $performative, 'sender' => $sender, 'receiver' => $receiver, 'content' => $content]) . "\n";
+        fwrite($this->socket, $msg);
     }
 
     public function sendPerception(string $action, string $perception): void {
@@ -66,11 +140,26 @@ class BdiClient {
         $args = [];
         $current = '';
         $insideQuotes = false;
+        $depthBrackets = 0;
+        $depthParens = 0;
         for ($i = 0; $i < strlen($argsStr); $i++) {
             $char = $argsStr[$i];
             if ($char === '"') {
                 $insideQuotes = !$insideQuotes;
-            } else if ($char === ',' && !$insideQuotes) {
+                $current .= $char;
+            } else if (!$insideQuotes && $char === '[') {
+                $depthBrackets++;
+                $current .= $char;
+            } else if (!$insideQuotes && $char === ']') {
+                $depthBrackets--;
+                $current .= $char;
+            } else if (!$insideQuotes && $char === '(') {
+                $depthParens++;
+                $current .= $char;
+            } else if (!$insideQuotes && $char === ')') {
+                $depthParens--;
+                $current .= $char;
+            } else if ($char === ',' && !$insideQuotes && $depthBrackets === 0 && $depthParens === 0) {
                 $args[] = $this->cleanArg($current);
                 $current = '';
             } else {
@@ -84,7 +173,11 @@ class BdiClient {
     }
 
     private function cleanArg(string $arg): string {
-        return trim($arg, ' \t\n\r\0\x0B"');
+        $s = trim($arg);
+        if (str_starts_with($s, '"') && str_ends_with($s, '"') && strlen($s) >= 2) {
+            return substr($s, 1, -1);
+        }
+        return $s;
     }
 
     private function sendActionResult(string $id, bool $success): void {
@@ -97,6 +190,13 @@ class BdiClient {
     }
 
     public function close(): void {
-        fclose($this->socket);
+        if ($this->socket) {
+            fclose($this->socket);
+            $this->socket = null;
+        }
+        if ($this->process) {
+            proc_terminate($this->process);
+            $this->process = null;
+        }
     }
 }

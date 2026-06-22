@@ -1,8 +1,5 @@
 # ============================================================================
 # Operação Dilúvio — A Tempestade IoT (Go / Golang)
-#
-# Multi-stage build: compile in golang:1.21-alpine, run from scratch.
-# Uses --network=host at runtime to reach the Panteão engine on port 44444.
 # ============================================================================
 
 # ---- Build stage ----
@@ -10,6 +7,8 @@ FROM public.ecr.aws/docker/library/golang:1.21-alpine AS builder
 
 WORKDIR /build
 
+COPY sdk ./sdk
+COPY go.mod .
 COPY client.go .
 
 # Static binary — no cgo, no external dependencies

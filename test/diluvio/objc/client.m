@@ -1,61 +1,54 @@
 #import <Foundation/Foundation.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <string.h>
+#import "BdiClient.h"
+
+@interface MyActionHandler : NSObject <PanteaoActionHandler>
+@property (nonatomic, assign) BOOL actionHandled;
+@end
+
+@implementation MyActionHandler
+- (BOOL)handlePanteaoAction:(NSString *)actionName args:(NSArray *)args {
+    if ([actionName isEqualToString:@"send_push_notification"]) {
+        NSLog(@"[DILUVIO] Action handled: send_push_notification");
+        self.actionHandled = YES;
+        return YES;
+    }
+    return YES;
+}
+@end
 
 int main(int argc, char *argv[]) {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-        NSLog(@"[DILUVIO] Objective-C client starting");
-        
-        int sock = socket(AF_INET, SOCK_STREAM, 0);
-        if (sock < 0) {
-            NSLog(@"[DILUVIO] FAILURE: socket creation failed");
-            [pool drain];
-            return 1;
-        }
-        
-        struct sockaddr_in serv_addr;
-        serv_addr.sin_family = AF_INET;
-        serv_addr.sin_port = htons(44444);
-        inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
-        
-        if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-            NSLog(@"[DILUVIO] FAILURE: connection failed");
-            [pool drain];
-            return 1;
-        }
-        
-        NSLog(@"[DILUVIO] Connected!");
-        sleep(1);
-        
-        const char *percept = "{\"type\":\"perception\",\"action\":\"add\",\"perception\":\"evacuation_order(litoral)\"}\n";
-        send(sock, percept, strlen(percept), 0);
-        NSLog(@"[DILUVIO] Sent perception");
-        
-        char buffer[2048] = {0};
-        int valread = read(sock, buffer, 2047);
-        if (valread > 0) {
-            NSString *response = [NSString stringWithUTF8String:buffer];
-            NSLog(@"[DILUVIO] Received: %@", response);
-            
-            if ([response containsString:@"\"type\":\"action\""]) {
-                NSRange rangeStart = [response rangeOfString:@"\"id\":\""];
-                if (rangeStart.location != NSNotFound) {
-                    NSString *sub = [response substringFromIndex:rangeStart.location + 6];
-                    NSRange rangeEnd = [sub rangeOfString:@"\""];
-                    if (rangeEnd.location != NSNotFound) {
-                        NSString *actionId = [sub substringToIndex:rangeEnd.location];
-                        NSString *reply = [NSString stringWithFormat:@"{\"type\":\"action_result\",\"id\":\"%@\",\"success\":true}\n", actionId];
-                        send(sock, [reply UTF8String], [reply length], 0);
-                        NSLog(@"[DILUVIO] Action result sent");
-                        NSLog(@"[DILUVIO] SUCCESS");
-                    }
-                }
-            }
-        }
-        
-        close(sock);
+    NSLog(@"[DILUVIO] Objective-C client starting");
+    
+    BdiClient *client = [[BdiClient alloc] init];
+    if (![client connectToHost:@"127.0.0.1" port:44444]) {
+        NSLog(@"[DILUVIO] FAILURE: connection failed");
         [pool drain];
-    return 0;
+        return 1;
+    }
+    
+    NSLog(@"[DILUVIO] Connected!");
+    
+    MyActionHandler *handler = [[MyActionHandler alloc] init];
+    [client registerAction:@"send_push_notification" withHandler:handler];
+    
+    [client sendMsgWithPerformative:@"tell" sender:@"external" receiver:@"orquestrador" content:@"evacuation_order(zone6)"];
+    NSLog(@"[DILUVIO] Sent perception");
+    
+    NSDate *deadline = [NSDate dateWithTimeIntervalSinceNow:5.0];
+    while (!handler.actionHandled && [deadline timeIntervalSinceNow] > 0) {
+        [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
+    }
+    
+    [client close];
+    
+    if (handler.actionHandled) {
+        NSLog(@"[DILUVIO] SUCCESS");
+        [pool drain];
+        return 0;
+    } else {
+        NSLog(@"[DILUVIO] FAILURE: timeout");
+        [pool drain];
+        return 1;
+    }
 }

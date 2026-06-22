@@ -1,9 +1,16 @@
 {
-  "name": "panteao-client",
+  "name": "panteao",
   "version": "1.0.0",
-  "description": "JavaScript client for Panteao BDI Coprocessor",
+  "description": "JavaScript client for the Panteao BDI agent engine",
   "main": "index.js",
   "type": "commonjs",
+  "keywords": ["bdi", "agents", "jason", "ai", "multi-agent"],
   "license": "MIT",
-  "dependencies": {}
+  "dependencies": {},
+  "optionalDependencies": {
+    "@panteao/engine-win32-x64": "^1.0.0",
+    "@panteao/engine-linux-x64": "^1.0.0",
+    "@panteao/engine-darwin-arm64": "^1.0.0",
+    "@panteao/engine-darwin-x64": "^1.0.0"
+  }
 }

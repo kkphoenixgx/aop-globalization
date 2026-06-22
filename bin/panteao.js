@@ -37,20 +37,36 @@ function cleanup() {
     }
 }
 
+const spawnArgs = process.argv.slice(2);
+const noJarIndex = spawnArgs.indexOf('--no-jar');
+let useJarFallback = true;
+if (noJarIndex !== -1) {
+    useJarFallback = false;
+    spawnArgs.splice(noJarIndex, 1);
+}
+
 let child;
 if (fs.existsSync(nativePath)) {
-    child = spawn(nativePath, process.argv.slice(2), {
+    child = spawn(nativePath, spawnArgs, {
+        stdio: 'inherit'
+    });
+} else if (useJarFallback && fs.existsSync(jarPath)) {
+    const javaArgs = [
+        '-jar',
+        jarPath,
+        ...spawnArgs
+    ];
+    child = spawn('java', javaArgs, {
         stdio: 'inherit'
     });
 } else {
-    const args = [
-        '-jar',
-        jarPath,
-        ...process.argv.slice(2)
-    ];
-    child = spawn('java', args, {
-        stdio: 'inherit'
-    });
+    if (!useJarFallback) {
+        console.error(`Error: Native engine executable not found at ${nativePath} and JAR fallback is disabled (--no-jar was specified).`);
+    } else {
+        console.error(`Error: Neither native engine executable nor JAR found. Please compile the project first.`);
+    }
+    cleanup();
+    process.exit(1);
 }
 
 child.on('close', (code) => {

@@ -5,6 +5,7 @@ import jason.asSemantics.ActionExec;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
+import java.util.List;
 import org.json.JSONObject;
 
 public class IPCAgArch extends AgArch {
@@ -22,6 +23,37 @@ public class IPCAgArch extends AgArch {
     }
 
     private static final ConcurrentHashMap<String, PendingAction> pendingActions = new ConcurrentHashMap<>();
+
+    @Override
+    public void init() throws Exception {
+        super.init();
+        List<String> chainedArchs = ArchitectureRegistry.get(getAgName());
+        if (chainedArchs != null) {
+            for (String archClass : chainedArchs) {
+                if (archClass.equals(IPCAgArch.class.getName()) || archClass.equals("br.com.kkphoenix.jason.ipc.IPCAgArch")) {
+                    continue;
+                }
+                try {
+                    jason.architecture.AgArch arch = (jason.architecture.AgArch) Class.forName(archClass).getDeclaredConstructor().newInstance();
+                    arch.setTS(getTS());
+                    insertAgArch(arch);
+                } catch (ClassNotFoundException e) {
+                    if (System.getProperty("org.graalvm.nativeimage.imagecode") != null) {
+                        System.err.println("\n================================================================================");
+                        System.err.println(" [PANTEÃO FATAL ERROR] Custom Agent Architecture Not Supported in Native Mode!");
+                        System.err.println(" You tried to load: " + archClass);
+                        System.err.println(" The compiled GraalVM native engine (panteao-engine) runs in a closed-world");
+                        System.err.println(" environment and cannot load arbitrary/custom classes at runtime.");
+                        System.err.println(" To use custom architectures or external libraries, you MUST run Panteão");
+                        System.err.println(" using JVM mode (JAR) which dynamically supports libraries in the classpath.");
+                        System.err.println("================================================================================");
+                        System.exit(1);
+                    }
+                    throw e;
+                }
+            }
+        }
+    }
 
     @Override
     public void act(ActionExec action) {

@@ -1,27 +1,116 @@
 const net = require('net');
 const EventEmitter = require('events');
 
-class BdiClient extends EventEmitter {
+const child_process = require('child_process');
+const path = require('path');
+const fs = require('fs');
+
+class Panteao extends EventEmitter {
     constructor(options = {}) {
         super();
         this.host = options.host || '127.0.0.1';
-        this.port = options.port || 44444;
-        this.autoReconnect = options.autoReconnect ?? true;
+        this.port = options.port || 0; 
+        this.project = options.project || null;
+        
+        // Resolve binary location inside the package structure
+        const binName = process.platform === 'win32' ? 'panteao-engine.exe' : 'panteao-engine';
+        
+        // Try to resolve from platform-specific package first
+        const platformPkg = `@panteao/engine-${process.platform}-${process.arch}`;
+        let resolvedPath = null;
+        try {
+            const pkgPath = require.resolve(path.join(platformPkg, 'package.json'));
+            const pkgDir = path.dirname(pkgPath);
+            const candidate = path.join(pkgDir, 'bin', binName);
+            const candidateFallback = path.join(pkgDir, binName);
+            if (fs.existsSync(candidate)) {
+                resolvedPath = candidate;
+            } else if (fs.existsSync(candidateFallback)) {
+                resolvedPath = candidateFallback;
+            }
+        } catch (e) {
+            // Platform package not installed or resolved
+        }
+
+        if (resolvedPath) {
+            this.binPath = resolvedPath;
+        } else {
+            // Fallback to local paths
+            this.binPath = path.join(__dirname, 'bin', binName);
+            if (!fs.existsSync(this.binPath)) {
+                this.binPath = path.join(__dirname, binName);
+            }
+        }
+        
+        this.autoReconnect = options.autoReconnect ?? (this.project ? false : true);
         this.reconnectInterval = options.reconnectInterval || 2000;
         this.socket = new net.Socket();
         this.buffer = '';
         this.actionHandlers = new Map();
+        this.child = null;
         this.setupSocketEvents();
     }
 
-    connect() {
+    _getFreePort() {
         return new Promise((resolve, reject) => {
+            const srv = net.createServer();
+            srv.listen(0, () => {
+                const port = srv.address().port;
+                srv.close((err) => {
+                    if (err) reject(err);
+                    else resolve(port);
+                });
+            });
+            srv.on('error', reject);
+        });
+    }
+
+    async connect() {
+        if (this.project) {
+            if (this.port === 0) {
+                this.port = await this._getFreePort();
+            }
+            
+            // Spawn the GraalVM native engine
+            const spawnArgs = [this.project, '--port', String(this.port)];
+            this.child = child_process.spawn(this.binPath, spawnArgs, {
+                stdio: ['ignore', 'inherit', 'inherit']
+            });
+
+            this.child.on('error', (err) => {
+                this.emit('error', new Error(`Failed to start GraalVM engine process: ${err.message}`));
+            });
+
+            // Wait brief moment for the engine to initialize its socket server
+            await new Promise(resolve => setTimeout(resolve, 800));
+        } else if (this.port === 0) {
+            this.port = 44444; // Default port if connecting only
+        }
+
+        return new Promise((resolve, reject) => {
+            const onReady = () => {
+                cleanup();
+                resolve();
+            };
+            const onError = (err) => {
+                cleanup();
+                reject(err);
+            };
+            const onClose = () => {
+                cleanup();
+                reject(new Error("Socket closed during handshake"));
+            };
+            const cleanup = () => {
+                this.off('ready', onReady);
+                this.socket.off('error', onError);
+                this.socket.off('close', onClose);
+            };
+            this.once('ready', onReady);
+            this.socket.once('error', onError);
+            this.socket.once('close', onClose);
+
             this.socket.connect(this.port, this.host, () => {
                 this.emit('connect');
-                resolve();
-            });
-            this.socket.once('error', (err) => {
-                reject(err);
             });
         });
     }
@@ -54,7 +143,9 @@ class BdiClient extends EventEmitter {
     handleIncomingLine(line) {
         try {
             const msg = JSON.parse(line);
-            if (msg.type === 'action') {
+            if (msg.type === 'mas_ready') {
+                this.emit('ready');
+            } else if (msg.type === 'action') {
                 const rawAction = msg.action;
                 const { name, args } = this.parseAction(rawAction);
                 const handler = this.actionHandlers.get(name);
@@ -67,6 +158,23 @@ class BdiClient extends EventEmitter {
                     this.sendActionResult(msg.id, true);
                 }
                 this.emit('action', { name, args, agent: msg.agent, id: msg.id });
+            } else if (msg.type === 'message') {
+                const { performative, sender, receiver, content } = msg;
+                this.emit('message', performative, sender, receiver, content);
+                this.emit(performative, sender, receiver, content);
+
+                // Compatibility: parse message content as an action
+                if (content && typeof content === 'string') {
+                    const parsed = this.parseAction(content);
+                    if (parsed && parsed.name) {
+                        const handler = this.actionHandlers.get(parsed.name);
+                        if (handler) {
+                            const dummyRespond = () => {};
+                            handler(parsed.args, dummyRespond);
+                        }
+                        this.emit('action', { name: parsed.name, args: parsed.args, agent: sender, id: null });
+                    }
+                }
             }
         } catch (e) {
             this.emit('error', e);
@@ -83,11 +191,26 @@ class BdiClient extends EventEmitter {
         const args = [];
         let current = '';
         let insideQuotes = false;
+        let depthBrackets = 0;
+        let depthParens = 0;
         for (let i = 0; i < argsStr.length; i++) {
             const char = argsStr[i];
             if (char === '"') {
                 insideQuotes = !insideQuotes;
-            } else if (char === ',' && !insideQuotes) {
+                current += char;
+            } else if (!insideQuotes && char === '[') {
+                depthBrackets++;
+                current += char;
+            } else if (!insideQuotes && char === ']') {
+                depthBrackets--;
+                current += char;
+            } else if (!insideQuotes && char === '(') {
+                depthParens++;
+                current += char;
+            } else if (!insideQuotes && char === ')') {
+                depthParens--;
+                current += char;
+            } else if (char === ',' && !insideQuotes && depthBrackets === 0 && depthParens === 0) {
                 args.push(this.cleanArg(current));
                 current = '';
             } else {
@@ -101,13 +224,13 @@ class BdiClient extends EventEmitter {
     }
 
     cleanArg(arg) {
-        return arg.trim().replace(/^"|"$/g, '');
+        const s = arg.trim();
+        if (s.startsWith('"') && s.endsWith('"') && s.length >= 2) {
+            return s.substring(1, s.length - 1);
+        }
+        return s;
     }
 
-    sendPerception(action, perception) {
-        const payload = JSON.stringify({ type: 'perception', action, perception }) + '\n';
-        this.socket.write(payload);
-    }
 
     registerAction(actionName, callback) {
         this.actionHandlers.set(actionName, callback);
@@ -118,10 +241,30 @@ class BdiClient extends EventEmitter {
         this.socket.write(payload);
     }
 
+    send(json) {
+        this.socket.write(JSON.stringify(json) + '\n');
+    }
+
+    sendMsg(performative, sender, receiver, content) {
+        this.send({
+            type: 'message',
+            performative: performative,
+            sender: sender,
+            receiver: receiver,
+            content: content
+        });
+    }
+
     close() {
         this.autoReconnect = false;
         this.socket.destroy();
+        if (this.child) {
+            this.child.kill('SIGTERM');
+        }
     }
 }
 
-module.exports = { BdiClient };
+const BdiClient = Panteao;
+const Panteão = Panteao;
+module.exports = { Panteao, BdiClient, Panteão };
+

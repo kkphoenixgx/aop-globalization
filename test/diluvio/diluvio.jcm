@@ -1,4 +1,3 @@
 mas operacao_diluvio {
     agent orquestrador : orquestrador.asl
-    agent hermes_talaria : hermes_talaria.asl
 }

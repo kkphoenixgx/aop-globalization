@@ -5,18 +5,80 @@ import 'dart:async';
 class BdiClient {
   late Socket _socket;
   final String host;
-  final int port;
+  int port;
+  final String? project;
+  Process? _process;
   final Map<String, Function(List<String> args, Function(bool success) respond)> _handlers = {};
 
-  BdiClient({this.host = '127.0.0.1', this.port = 44444});
+  BdiClient({this.host = '127.0.0.1', this.port = 0, this.project});
+
+  static Future<int> getFreePort() async {
+    final socket = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+    final port = socket.port;
+    await socket.close();
+    return port;
+  }
+
+  static String findBinary() {
+    final isWin = Platform.isWindows;
+    final binName = isWin ? 'panteao-engine.exe' : 'panteao-engine';
+    
+    try {
+      final scriptDir = File(Platform.script.toFilePath()).parent.path;
+      final cand1 = '$scriptDir/$binName';
+      if (FileSystemEntity.typeSync(cand1) != FileSystemEntityType.notFound) return cand1;
+      final cand2 = '$scriptDir/bin/$binName';
+      if (FileSystemEntity.typeSync(cand2) != FileSystemEntityType.notFound) return cand2;
+    } catch (_) {}
+    
+    final cwd = Directory.current.path;
+    final cand3 = '$cwd/$binName';
+    if (FileSystemEntity.typeSync(cand3) != FileSystemEntityType.notFound) return cand3;
+    final cand4 = '$cwd/bin/$binName';
+    if (FileSystemEntity.typeSync(cand4) != FileSystemEntityType.notFound) return cand4;
+    
+    return binName;
+  }
 
   Future<void> connect() async {
+    if (project != null) {
+      if (port == 0) {
+        port = await getFreePort();
+      }
+      final bin = findBinary();
+      _process = await Process.start(bin, [project!, '--port', port.toString()]);
+      await Future.delayed(const Duration(milliseconds: 800));
+    } else if (port == 0) {
+      port = 44444;
+    }
+
     _socket = await Socket.connect(host, port);
+
+    final completer = Completer<void>();
+    var handshakeBuffer = '';
+    
     _socket
+        .cast<List<int>>()
         .transform(utf8.decoder)
         .transform(const LineSplitter())
-        .where((line) => line.trim().isNotEmpty)
-        .listen(_handleIncomingLine, onError: (err) {});
+        .listen((line) {
+          if (!completer.isCompleted) {
+            handshakeBuffer += line;
+            if (handshakeBuffer.contains('"type":"mas_ready"')) {
+              completer.complete();
+            }
+          } else {
+            if (line.trim().isNotEmpty) {
+              _handleIncomingLine(line);
+            }
+          }
+        }, onError: (err) {
+          if (!completer.isCompleted) completer.completeError(err);
+        }, onDone: () {
+          if (!completer.isCompleted) completer.completeError(Exception('Disconnected during handshake'));
+        });
+
+    await completer.future;
   }
 
   void _handleIncomingLine(String line) {
@@ -48,11 +110,26 @@ class BdiClient {
     final args = <String>[];
     final current = StringBuffer();
     bool insideQuotes = false;
+    int depthBrackets = 0;
+    int depthParens = 0;
     for (int i = 0; i < argsStr.length; i++) {
       final char = argsStr[i];
       if (char == '"') {
         insideQuotes = !insideQuotes;
-      } else if (char == ',' && !insideQuotes) {
+        current.write(char);
+      } else if (!insideQuotes && char == '[') {
+        depthBrackets++;
+        current.write(char);
+      } else if (!insideQuotes && char == ']') {
+        depthBrackets--;
+        current.write(char);
+      } else if (!insideQuotes && char == '(') {
+        depthParens++;
+        current.write(char);
+      } else if (!insideQuotes && char == ')') {
+        depthParens--;
+        current.write(char);
+      } else if (char == ',' && !insideQuotes && depthBrackets == 0 && depthParens == 0) {
         args.add(_cleanArg(current.toString()));
         current.clear();
       } else {
@@ -66,7 +143,16 @@ class BdiClient {
   }
 
   String _cleanArg(String arg) {
-    return arg.trim().replaceAll(RegExp(r'^"|"$'), '');
+    final s = arg.trim();
+    if (s.startsWith('"') && s.endsWith('"') && s.length >= 2) {
+      return s.substring(1, s.length - 1);
+    }
+    return s;
+  }
+
+    void sendMsg(String performative, String sender, String receiver, String content) {
+    var msg = jsonEncode({'type': 'message', 'performative': performative, 'sender': sender, 'receiver': receiver, 'content': content});
+    _socket?.write('$msg\n');
   }
 
   void sendPerception(String action, String perception) {
@@ -93,6 +179,7 @@ class BdiClient {
 
   void close() {
     _socket.destroy();
+    _process?.kill();
   }
 }
 

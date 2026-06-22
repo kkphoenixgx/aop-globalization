@@ -14,3 +14,6 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
 ]
 dependencies = []
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/panteao"]

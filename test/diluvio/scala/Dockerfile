@@ -1,20 +1,8 @@
-# ============================================================================
-# Operação Dilúvio — O Analisador de Correntes (Scala)
-# ============================================================================
-FROM public.ecr.aws/docker/library/eclipse-temurin:17-jdk-jammy
-
-LABEL maintainer="Panteão BDI Engine Test Suite"
-LABEL description="O Analisador de Correntes — Scala big data soil analysis test"
-
-# Copy pre-downloaded scala-cli from host
-COPY scala-cli /usr/local/bin/scala-cli
-RUN chmod +x /usr/local/bin/scala-cli && scala-cli version
-
+FROM sbtscala/scala-sbt:eclipse-temurin-jammy-17.0.10_7_1.9.9_3.3.3
 WORKDIR /app
-
-COPY Client.scala .
-
-# Pre-compile to speed up runtime
-RUN scala-cli compile Client.scala
-
-CMD ["scala-cli", "run", "Client.scala"]
+COPY sdk/src/main/scala/io/panteao/BdiClient.scala src/main/scala/io/panteao/BdiClient.scala
+RUN mkdir -p src/main/scala
+COPY Client.scala src/main/scala/Client.scala
+RUN printf 'name := "client"\nversion := "0.1"\nscalaVersion := "3.3.3"\n' > build.sbt
+RUN sbt compile
+CMD ["sbt", "--error", "run"]

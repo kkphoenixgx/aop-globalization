@@ -67,19 +67,16 @@ public class Launcher {
         }
 
         String portStr = null;
-        boolean isBrowser = false;
         for (int i = 0; i < args.length; i++) {
             if (args[i].equals("--port") && i + 1 < args.length) {
                 portStr = args[i+1];
-            } else if (args[i].equals("--browser")) {
-                isBrowser = true;
             }
         }
 
         //? Translate JCM to MAS2J if JCM is provided
         if (projectFile.getName().endsWith(".jcm")) {
             try {
-                projectPath = translateJcmToMas2j(projectFile, portStr, isBrowser);
+                projectPath = translateJcmToMas2j(projectFile, portStr);
             } catch (IOException e) {
                 logger.severe("Failed to parse JCM file: " + e.getMessage());
                 System.exit(1);
@@ -142,7 +139,7 @@ public class Launcher {
 
     //? ----------- Helpers -----------
 
-    private static String translateJcmToMas2j(File jcmFile, String portStr, boolean browser) throws IOException {
+    private static String translateJcmToMas2j(File jcmFile, String portStr) throws IOException {
         logger.fine("Parsing JCM file: " + jcmFile.getAbsolutePath());
         String content = Files.readString(jcmFile.toPath(), StandardCharsets.UTF_8);
 
@@ -199,9 +196,7 @@ public class Launcher {
         StringBuilder sb = new StringBuilder();
         sb.append("MAS temp_mas {\n");
         sb.append("    infrastructure: Centralised\n\n");
-        if (browser) {
-            sb.append("    environment: br.com.kkphoenix.jason.ipc.BrowserEnvironment\n\n");
-        } else if (hasPort) {
+        if (hasPort) {
             sb.append("    environment: br.com.kkphoenix.jason.ipc.IPCEnvironment(\"--port\", \"" + portStr + "\")\n\n");
         }
 
@@ -209,15 +204,12 @@ public class Launcher {
         java.nio.file.Path userCwd = new File(".").getAbsoluteFile().toPath().normalize();
         List<String> sourcePaths = new ArrayList<>();
         for (AgentConfig config : configs) {
-            if (browser) {
-                if (!config.archs.contains("br.com.kkphoenix.jason.ipc.BrowserAgArch")) {
-                    config.archs.add(0, "br.com.kkphoenix.jason.ipc.BrowserAgArch");
-                }
-            } else if (hasPort) {
-                if (!config.archs.contains("br.com.kkphoenix.jason.ipc.IPCAgArch")) {
-                    config.archs.add(0, "br.com.kkphoenix.jason.ipc.IPCAgArch");
-                }
-            }
+            // Register original user architectures in the static registry
+            List<String> userArchs = new java.util.ArrayList<>(config.archs);
+            ArchitectureRegistry.register(config.name, userArchs);
+
+            // User agents have no special arch — they communicate via .send(talaria, ...)
+            // config.archs stays as defined by the user (from the .jcm file)
             String escapedAslPath = config.aslPath.replace("\\", "/");
             File aslFile = new File(escapedAslPath);
             if (!aslFile.isAbsolute()) {
@@ -235,6 +227,22 @@ public class Launcher {
         }
 
         sb.append("    agents:\n");
+
+        // Inject the Talaria gateway agent when running in IPC mode
+        if (hasPort) {
+            sb.append("        talaria talaria.asl agentArchClass br.com.kkphoenix.jason.ipc.TalariaAgArch;\n");
+            try {
+                File talariaAslFile = new File(jcmFile.getParentFile(), "talaria.asl");
+                if (!talariaAslFile.exists()) {
+                    try (java.io.FileWriter aslWriter = new java.io.FileWriter(talariaAslFile)) {
+                        aslWriter.write("!start.\n+!start <- .print(\"Talaria agent started.\").\n");
+                    }
+                }
+            } catch (Exception e) {
+                logger.warning("Could not dynamically write talaria.asl: " + e.getMessage());
+            }
+        }
+
         for (AgentConfig config : configs) {
             File aslFile = new File(config.aslPath);
             String simpleName = aslFile.getName(); // e.g. bob.asl
@@ -303,11 +311,17 @@ public class Launcher {
     }
 
     private static void parseAgentProperties(String propsBlock, AgentConfig config) {
-        // Look for agarch
-        Pattern archPattern = Pattern.compile("agarch\\s*:\\s*([a-zA-Z0-9_\\-\\.]+)");
+        // Look for agarch or ag-arch with optional multiple comma-separated values
+        Pattern archPattern = Pattern.compile("(?:ag-arch|agarch)\\s*:\\s*([a-zA-Z0-9_\\-\\.\\,\\s]+)");
         Matcher archMatcher = archPattern.matcher(propsBlock);
         while (archMatcher.find()) {
-            config.archs.add(archMatcher.group(1).trim());
+            String[] archs = archMatcher.group(1).split(",");
+            for (String arch : archs) {
+                String cleanArch = arch.trim();
+                if (!cleanArch.isEmpty() && !config.archs.contains(cleanArch)) {
+                    config.archs.add(cleanArch);
+                }
+            }
         }
 
         // Look for instances

@@ -10,6 +10,7 @@ RUN R -e 'install.packages("jsonlite", repos="https://cloud.r-project.org")'
 
 WORKDIR /app
 
+COPY sdk ./sdk
 COPY client.R .
 
 CMD ["Rscript", "client.R"]

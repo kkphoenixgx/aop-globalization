@@ -1,6 +1,51 @@
-BdiClient <- function(host = "127.0.0.1", port = 44444) {
+BdiClient <- function(host = "127.0.0.1", port = 0, project = NULL) {
+  getFreePort <- function() {
+    tryCatch({
+      s <- socketConnection(server = TRUE, port = 0, open = "r")
+      p <- summary(s)$port
+      close(s)
+      return(p)
+    }, error = function(e) {
+      return(44444)
+    })
+  }
+
+  findBinary <- function() {
+    is_win <- .Platform$OS.type == "windows"
+    bin_name <- if (is_win) "panteao-engine.exe" else "panteao-engine"
+    if (file.exists(bin_name)) return(file.path(getwd(), bin_name))
+    if (file.exists(file.path("bin", bin_name))) return(file.path(getwd(), "bin", bin_name))
+    return(bin_name)
+  }
+
+  pid <- NULL
+  if (!is.null(project)) {
+    if (port == 0) {
+      port <- getFreePort()
+    }
+    bin <- findBinary()
+    pid <- system2(bin, args = c(project, "--port", as.character(port)), wait = FALSE, stdout = FALSE, stderr = FALSE)
+    Sys.sleep(0.8)
+  } else if (port == 0) {
+    port <- 44444
+  }
+
   con <- socketConnection(host = host, port = port, blocking = TRUE, open = "r+")
+  
+  while (isOpen(con)) {
+    line <- readLines(con, n = 1)
+    if (length(line) == 0) stop("Connection closed during handshake")
+    if (grepl('"type":"mas_ready"', line)) {
+      break
+    }
+  }
+
   handlers <- list()
+
+  sendMsg <- function(performative, sender, receiver, content) {
+    payload <- sprintf('{"type":"message","performative":"%s","sender":"%s","receiver":"%s","content":"%s"}\n', performative, sender, receiver, content)
+    writeLines(payload, con)
+  }
 
   sendPerception <- function(action, perception) {
     payload <- sprintf('{"type":"perception","action":"%s","perception":"%s"}\n', action, perception)
@@ -9,7 +54,8 @@ BdiClient <- function(host = "127.0.0.1", port = 44444) {
 
   sendActionResult <- function(actionId, success) {
     success_str <- if (success) "true" else "false"
-    payload <- sprintf('{"type":"action_result","id":"%s","success":%s}\n', actionId, success_str)
+    payload <- sprintf('{"type":"action_result","id":"%s","success":%s}
+', actionId, success_str)
     writeLines(payload, con)
   }
 
@@ -33,10 +79,19 @@ BdiClient <- function(host = "127.0.0.1", port = 44444) {
           next
         }
 
-        action_match <- regexpr('"action":"([^"]+)"', line)
-        if (action_match != -1) {
-          action_str <- regmatches(line, action_match)
-          rawAction <- gsub('"action":"|"', '', action_str)
+        action_start <- regexpr('"action":"', line)
+        if (action_start != -1) {
+          # extract everything after "action":"
+          rem <- substr(line, action_start + 10, nchar(line))
+          # find the last quote before the end of the JSON object (ignoring spaces/commas)
+          # A simple heuristic: find the last quote in 'rem'
+          last_quote <- regexpr('"[^"]*$', rem)
+          if (last_quote != -1) {
+            rawAction <- substr(rem, 1, last_quote - 1)
+            rawAction <- gsub('\\\\"', '"', rawAction)
+          } else {
+            next
+          }
         } else {
           next
         }
@@ -47,8 +102,45 @@ BdiClient <- function(host = "127.0.0.1", port = 44444) {
           rparenIdx <- regexpr('\\)', rawAction)
           if (rparenIdx != -1) {
             args_str <- substr(rawAction, parenIdx + 1, rparenIdx - 1)
-            args <- trimws(strsplit(args_str, ",")[[1]])
-            args <- gsub('^"|"$', '', args)
+            
+            # Robust nested parser in R
+            chars <- strsplit(args_str, "")[[1]]
+            args <- list()
+            current <- ""
+            inside_quotes <- FALSE
+            depth_brackets <- 0
+            depth_parens <- 0
+            
+            if (length(chars) > 0) {
+              for (i in 1:length(chars)) {
+                c <- chars[i]
+                if (c == '"') {
+                  inside_quotes <- !inside_quotes
+                  current <- paste0(current, c)
+                } else if (!inside_quotes && c == '[') {
+                  depth_brackets <- depth_brackets + 1
+                  current <- paste0(current, c)
+                } else if (!inside_quotes && c == ']') {
+                  depth_brackets <- depth_brackets - 1
+                  current <- paste0(current, c)
+                } else if (!inside_quotes && c == '(') {
+                  depth_parens <- depth_parens + 1
+                  current <- paste0(current, c)
+                } else if (!inside_quotes && c == ')') {
+                  depth_parens <- depth_parens - 1
+                  current <- paste0(current, c)
+                } else if (c == ',' && !inside_quotes && depth_brackets == 0 && depth_parens == 0) {
+                  args <- c(args, clean_arg(current))
+                  current <- ""
+                } else {
+                  current <- paste0(current, c)
+                }
+              }
+            }
+            if (nchar(trimws(current)) > 0) {
+              args <- c(args, clean_arg(current))
+            }
+            args <- unlist(args)
           } else {
             args <- list()
           }
@@ -70,11 +162,23 @@ BdiClient <- function(host = "127.0.0.1", port = 44444) {
     }
   }
 
+  clean_arg <- function(arg) {
+    s <- trimws(arg)
+    if (startsWith(s, '"') && endsWith(s, '"') && nchar(s) >= 2) {
+      return(substr(s, 2, nchar(s) - 1))
+    }
+    return(s)
+  }
+
   closeConnection <- function() {
     close(con)
+    if (!is.null(pid)) {
+      try(tools::pskill(pid), silent = TRUE)
+    }
   }
 
   list(
+    sendMsg = sendMsg,
     sendPerception = sendPerception,
     registerAction = registerAction,
     processActions = processActions,

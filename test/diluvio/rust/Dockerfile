@@ -1,14 +1,9 @@
-FROM public.ecr.aws/docker/library/rust:1.75-slim-bookworm AS builder
+FROM public.ecr.aws/docker/library/rust:1.75
 WORKDIR /app
-RUN cargo new --bin muralha-telemetria
-WORKDIR /app/muralha-telemetria
-# Add dependencies directly via cargo CLI
-RUN cargo add serde --features derive
-RUN cargo add serde_json
-COPY client.rs src/main.rs
+COPY sdk sdk
+RUN cargo new client
+WORKDIR /app/client
+COPY src/main.rs src/main.rs
+RUN echo 'panteao-client = { path = "../sdk" }' >> Cargo.toml
 RUN cargo build --release
-
-FROM public.ecr.aws/docker/library/debian:bookworm-slim
-WORKDIR /app
-COPY --from=builder /app/muralha-telemetria/target/release/muralha-telemetria .
-CMD ["./muralha-telemetria"]
+CMD ["./target/release/client"]

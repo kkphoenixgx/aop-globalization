@@ -1,3 +1,3 @@
-from .client import BdiClient
+from .client import Panteao
 
-__all__ = ["BdiClient"]
+__all__ = ["Panteao"]

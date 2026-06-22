@@ -1,24 +1,68 @@
 import socket
 import json
 import threading
-import re
+import subprocess
+import time
+import os
+import platform
 from typing import Callable, List
 
-class BdiClient:
-    def __init__(self, host: str = "127.0.0.1", port: int = 44444, auto_reconnect: bool = True):
+class Panteao:
+    def __init__(self, host: str = "127.0.0.1", port: int = 0, auto_reconnect: bool = True, project: str = None):
         self.host = host
         self.port = port
-        self.auto_reconnect = auto_reconnect
+        self.project = project
+        
+        # Resolve binary location inside the package structure
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        bin_name = "panteao-engine.exe" if platform.system() == "Windows" else "panteao-engine"
+        
+        self.bin_path = os.path.join(current_dir, "bin", bin_name)
+        if not os.path.exists(self.bin_path):
+            self.bin_path = os.path.join(current_dir, bin_name)
+            
+        self.auto_reconnect = False if project else auto_reconnect
         self.socket = None
         self.file = None
         self.action_handlers = {}
+        self.message_handlers = {}
+        self.general_message_handler = None
         self.running = False
         self.thread = None
+        self.process = None
+
+    def _get_free_port(self) -> int:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind(("", 0))
+        port = s.getsockname()[1]
+        s.close()
+        return port
 
     def connect(self) -> None:
+        if self.project:
+            if self.port == 0:
+                self.port = self._get_free_port()
+            
+            # Spawn the GraalVM engine subprocess
+            args = [self.bin_path, self.project, "--port", str(self.port)]
+            self.process = subprocess.Popen(args, stdin=subprocess.DEVNULL)
+            time.sleep(0.8)
+        elif self.port == 0:
+            self.port = 44444
+
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.connect((self.host, self.port))
         self.file = self.socket.makefile('r', encoding='utf-8')
+        while True:
+            line = self.file.readline()
+            if not line:
+                raise ConnectionError("Disconnected during handshake")
+            try:
+                msg = json.loads(line.strip())
+                if msg.get("type") == "mas_ready":
+                    break
+            except Exception:
+                pass
         self.running = True
         self.thread = threading.Thread(target=self._listen, daemon=True)
         self.thread.start()
@@ -34,7 +78,6 @@ class BdiClient:
             pass
         finally:
             if self.running and self.auto_reconnect:
-                # Simple reconnect logic
                 try:
                     self.close()
                     self.connect()
@@ -55,11 +98,19 @@ class BdiClient:
                     action_id = msg.get("id")
                     def respond(success: bool):
                         self._send_action_result(action_id, success)
-                    # Trigger the callback
                     handler(args, respond)
                 else:
-                    # Auto-succeed if no handler to prevent blocking
                     self._send_action_result(msg.get("id"), True)
+            elif msg.get("type") == "message":
+                performative = msg.get("performative")
+                sender = msg.get("sender")
+                receiver = msg.get("receiver")
+                content = msg.get("content")
+                handler = self.message_handlers.get(performative)
+                if handler:
+                    handler(sender, receiver, content)
+                if self.general_message_handler:
+                    self.general_message_handler(performative, sender, receiver, content)
         except Exception:
             pass
 
@@ -71,15 +122,29 @@ class BdiClient:
         name = action_str[:paren_idx].strip()
         args_str = action_str[paren_idx + 1:action_str.rfind(")")]
         
-        # Simple AgentSpeak tokenization
         args = []
         current = []
         inside_quotes = False
+        depth_brackets = 0
+        depth_parens = 0
         
         for char in args_str:
             if char == '"':
                 inside_quotes = not inside_quotes
-            elif char == ',' and not inside_quotes:
+                current.append(char)
+            elif not inside_quotes and char == '[':
+                depth_brackets += 1
+                current.append(char)
+            elif not inside_quotes and char == ']':
+                depth_brackets -= 1
+                current.append(char)
+            elif not inside_quotes and char == '(':
+                depth_parens += 1
+                current.append(char)
+            elif not inside_quotes and char == ')':
+                depth_parens -= 1
+                current.append(char)
+            elif char == ',' and not inside_quotes and depth_brackets == 0 and depth_parens == 0:
                 args.append(self._clean_arg("".join(current)))
                 current = []
             else:
@@ -90,7 +155,11 @@ class BdiClient:
         return name, args
 
     def _clean_arg(self, arg: str) -> str:
-        return arg.strip().strip('"')
+        s = arg.strip()
+        if s.startswith('"') and s.endswith('"') and len(s) >= 2:
+            return s[1:-1]
+        return s
+
 
     def send_perception(self, action: str, perception: str) -> None:
         payload = {
@@ -103,6 +172,22 @@ class BdiClient:
     def register_action(self, action_name: str, callback: Callable[[List[str], Callable[[bool], None]], None]) -> None:
         self.action_handlers[action_name] = callback
 
+    def register_message(self, callback: Callable[[str, str, str, str], None]) -> None:
+        self.general_message_handler = callback
+
+    def register_performative(self, performative: str, callback: Callable[[str, str, str], None]) -> None:
+        self.message_handlers[performative] = callback
+
+    def send_msg(self, performative: str, sender: str, receiver: str, content: str) -> None:
+        payload = {
+            "type": "message",
+            "performative": performative,
+            "sender": sender,
+            "receiver": receiver,
+            "content": content
+        }
+        self.socket.sendall((json.dumps(payload) + "\n").encode('utf-8'))
+
     def _send_action_result(self, action_id: str, success: bool) -> None:
         payload = {
             "type": "action_result",
@@ -114,9 +199,23 @@ class BdiClient:
     def close(self) -> None:
         self.running = False
         try:
+            if self.socket:
+                self.socket.shutdown(socket.SHUT_RDWR)
+        except Exception:
+            pass
+        try:
             if self.file:
                 self.file.close()
+        except Exception:
+            pass
+        try:
             if self.socket:
                 self.socket.close()
+        except Exception:
+            pass
+        try:
+            if self.process:
+                self.process.terminate()
+                self.process.wait()
         except Exception:
             pass

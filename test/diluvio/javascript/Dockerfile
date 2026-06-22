@@ -8,7 +8,9 @@ LABEL description="O Centro de Comando — JavaScript/Node.js dashboard test"
 
 WORKDIR /app
 
+COPY sdk ./sdk
 COPY client.js .
 
-# No npm install needed — only uses built-in 'net' module
+RUN npm install ./sdk
+
 CMD ["node", "client.js"]

@@ -1,0 +1,13 @@
+MAS temp_mas {
+    infrastructure: Centralised
+
+    environment: br.com.kkphoenix.jason.ipc.IPCEnvironment("--port", "44444")
+
+    agents:
+        talaria talaria.asl agentArchClass br.com.kkphoenix.jason.ipc.TalariaAgArch;
+        orquestrador orquestrador.asl;
+
+    aslSourcePath:
+        "test/diluvio";
+
+}

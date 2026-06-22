@@ -11,9 +11,12 @@ typedef struct {
     int socket_fd;
     PanteaoActionCallback callback;
     void *callback_context;
+    int engine_pid;
 } PanteaoClient;
 
 int panteao_connect(PanteaoClient *client, const char *host, int port);
+int panteao_connect_with_project(PanteaoClient *client, const char *host, int port, const char *project);
+int panteao_send_msg(PanteaoClient *client, const char *performative, const char *sender, const char *receiver, const char *content);
 int panteao_send_perception(PanteaoClient *client, const char *action, const char *perception);
 int panteao_send_action_result(PanteaoClient *client, const char *action_id, int success);
 void panteao_register_action_callback(PanteaoClient *client, PanteaoActionCallback callback, void *context);

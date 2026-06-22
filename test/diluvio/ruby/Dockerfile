@@ -1,4 +1,5 @@
-FROM public.ecr.aws/docker/library/ruby:3.2-slim
+FROM public.ecr.aws/docker/library/ruby:3.2
 WORKDIR /app
-COPY client.rb /app/
+COPY sdk sdk
+COPY client.rb .
 CMD ["ruby", "client.rb"]

@@ -11,7 +11,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-import org.json.JSONObject;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class BdiClient implements AutoCloseable {
 
@@ -26,12 +27,60 @@ public class BdiClient implements AutoCloseable {
     private final Map<String, ActionHandler> actionHandlers = new HashMap<>();
     private final Thread listenerThread;
     private volatile boolean running = true;
+    private Process engineProcess;
+
+    private static int getFreePort() throws java.io.IOException {
+        try (java.net.ServerSocket s = new java.net.ServerSocket(0)) {
+            return s.getLocalPort();
+        }
+    }
+
+    private static String findBinary() {
+        boolean isWin = System.getProperty("os.name").toLowerCase().contains("win");
+        String binName = isWin ? "panteao-engine.exe" : "panteao-engine";
+        String userDir = System.getProperty("user.dir");
+        if (userDir != null) {
+            java.io.File cand1 = new java.io.File(userDir, binName);
+            if (cand1.exists()) return cand1.getAbsolutePath();
+            java.io.File cand2 = new java.io.File(userDir, "bin/" + binName);
+            if (cand2.exists()) return cand2.getAbsolutePath();
+        }
+        return binName;
+    }
 
     public BdiClient(String host, int port) throws Exception {
-        this.socket = new Socket(host, port);
+        this(host, port, null);
+    }
+
+    public BdiClient(String host, int port, String project) throws Exception {
+        String actualHost = (host == null || host.isEmpty()) ? "127.0.0.1" : host;
+        if (project != null && !project.isEmpty()) {
+            if (port == 0) {
+                port = getFreePort();
+            }
+            String bin = findBinary();
+            ProcessBuilder pb = new ProcessBuilder(bin, project, "--port", String.valueOf(port));
+            pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+            pb.redirectError(ProcessBuilder.Redirect.DISCARD);
+            this.engineProcess = pb.start();
+            Thread.sleep(800);
+        } else {
+            this.engineProcess = null;
+            if (port == 0) port = 44444;
+        }
+
+        this.socket = new Socket(actualHost, port);
         this.out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true);
         this.in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
-        
+
+        while (true) {
+            String line = in.readLine();
+            if (line == null) throw new java.io.IOException("Connection lost during handshake");
+            if (line.contains("\"type\":\"mas_ready\"")) {
+                break;
+            }
+        }
+
         this.listenerThread = new Thread(this::listen);
         this.listenerThread.setDaemon(true);
         this.listenerThread.start();
@@ -44,29 +93,33 @@ public class BdiClient implements AutoCloseable {
                 handleIncomingLine(line.trim());
             }
         } catch (Exception e) {
-            // Socket closed or connection lost
         }
     }
+
+    private static final Pattern TYPE_PATTERN = Pattern.compile("\"type\"\\s*:\\s*\"([^\"]*)\"");
+    private static final Pattern ACTION_PATTERN = Pattern.compile("\"action\"\\s*:\\s*\"([^\"]*)\"");
+    private static final Pattern ID_PATTERN = Pattern.compile("\"id\"\\s*:\\s*\"([^\"]*)\"");
 
     private void handleIncomingLine(String line) {
         if (line.isEmpty()) return;
         try {
-            JSONObject msg = new JSONObject(line);
-            if ("action".equals(msg.optString("type"))) {
-                String rawAction = msg.optString("action", "");
+            Matcher typeMatcher = TYPE_PATTERN.matcher(line);
+            if (typeMatcher.find() && "action".equals(typeMatcher.group(1))) {
+                Matcher actionMatcher = ACTION_PATTERN.matcher(line);
+                String rawAction = actionMatcher.find() ? actionMatcher.group(1) : "";
                 ParsedAction action = parseAction(rawAction);
                 ActionHandler handler = actionHandlers.get(action.name);
-                
+
+                Matcher idMatcher = ID_PATTERN.matcher(line);
+                String actionId = idMatcher.find() ? idMatcher.group(1) : "";
+
                 if (handler != null) {
-                    String actionId = msg.optString("id");
                     handler.handle(action.args, (success) -> sendActionResult(actionId, success));
                 } else {
-                    // Auto-succeed if no handler
-                    sendActionResult(msg.optString("id"), true);
+                    sendActionResult(actionId, true);
                 }
             }
         } catch (Exception e) {
-            // JSON parse error
         }
     }
 
@@ -87,16 +140,31 @@ public class BdiClient implements AutoCloseable {
 
         String name = actionStr.substring(0, parenIdx).trim();
         String argsStr = actionStr.substring(parenIdx + 1, actionStr.lastIndexOf(')'));
-        
+
         List<String> argsList = new ArrayList<>();
         StringBuilder current = new StringBuilder();
         boolean insideQuotes = false;
+        int depthBrackets = 0;
+        int depthParens = 0;
 
         for (int i = 0; i < argsStr.length(); i++) {
             char c = argsStr.charAt(i);
             if (c == '"') {
                 insideQuotes = !insideQuotes;
-            } else if (c == ',' && !insideQuotes) {
+                current.append(c);
+            } else if (!insideQuotes && c == '[') {
+                depthBrackets++;
+                current.append(c);
+            } else if (!insideQuotes && c == ']') {
+                depthBrackets--;
+                current.append(c);
+            } else if (!insideQuotes && c == '(') {
+                depthParens++;
+                current.append(c);
+            } else if (!insideQuotes && c == ')') {
+                depthParens--;
+                current.append(c);
+            } else if (c == ',' && !insideQuotes && depthBrackets == 0 && depthParens == 0) {
                 argsList.add(cleanArg(current.toString()));
                 current.setLength(0);
             } else {
@@ -111,15 +179,24 @@ public class BdiClient implements AutoCloseable {
     }
 
     private String cleanArg(String arg) {
-        return arg.trim().replaceAll("^\"|\"$", "");
+        String s = arg.trim();
+        if (s.startsWith("\"") && s.endsWith("\"") && s.length() >= 2) {
+            return s.substring(1, s.length() - 1);
+        }
+        return s;
+    }
+
+    public void sendMsg(String performative, String sender, String receiver, String content) {
+        String escapedContent = content.replace("\"", "\\\"");
+        String json = "{\"type\":\"message\",\"performative\":\"" + performative + "\",\"sender\":\"" + sender + "\",\"receiver\":\"" + receiver + "\",\"content\":\"" + escapedContent + "\"}\n";
+        out.print(json);
+        out.flush();
     }
 
     public void sendPerception(String action, String perception) {
-        JSONObject payload = new JSONObject();
-        payload.put("type", "perception");
-        payload.put("action", action);
-        payload.put("perception", perception);
-        out.println(payload.toString());
+        String escapedPerception = perception.replace("\"", "\\\"");
+        String json = "{\"type\":\"perception\",\"action\":\"" + action + "\",\"perception\":\"" + escapedPerception + "\"}";
+        out.println(json);
     }
 
     public void registerAction(String actionName, ActionHandler handler) {
@@ -127,18 +204,18 @@ public class BdiClient implements AutoCloseable {
     }
 
     private void sendActionResult(String id, boolean success) {
-        JSONObject payload = new JSONObject();
-        payload.put("type", "action_result");
-        payload.put("id", id);
-        payload.put("success", success);
-        out.println(payload.toString());
+        String json = "{\"type\":\"action_result\",\"id\":\"" + id + "\",\"success\":" + success + "}";
+        out.println(json);
     }
 
     @Override
     public void close() throws Exception {
         running = false;
-        in.close();
-        out.close();
-        socket.close();
+        if (socket != null) { try { socket.close(); } catch (Exception e) {} }
+        if (in != null) { try { in.close(); } catch (Exception e) {} }
+        if (out != null) { try { out.close(); } catch (Exception e) {} }
+        if (engineProcess != null) {
+            try { engineProcess.destroy(); } catch (Exception e) {}
+        }
     }
 }

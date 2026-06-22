@@ -75,8 +75,9 @@ int main(void) {
 
     /* 4. Send perception: gate_pressure(gate_01,85) */
     const char *perception =
-        "{\"type\":\"perception\",\"action\":\"add\","
-        "\"perception\":\"gate_pressure(gate_01,85)\"}\n";
+        "{\"type\":\"message\",\"performative\":\"tell\","
+        "\"sender\":\"external\",\"receiver\":\"orquestrador\","
+        "\"content\":\"gate_pressure(gate_01,85)\"}\n";
 
     printf("[PLC] Enviando percepção: gate_pressure(gate_01, 85)\n");
 

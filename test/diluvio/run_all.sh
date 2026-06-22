@@ -41,17 +41,26 @@ echo "------------------------------------------------------------"
 start_engine() {
     local LANG_NAME="$1"
     local LOG_FILE="$LOG_DIR/${LANG_NAME}.log"
-    echo "[Engine] Iniciando motor BDI na porta $PORT..." >> "$LOG_FILE"
-    java -jar "$JAR_PATH" "$SCRIPT_DIR/diluvio.jcm" --port "$PORT" >> "$LOG_FILE" 2>&1 &
+    local NATIVE_EXE="$PROJECT_DIR/bin/panteao-engine"
+
+    if [ -f "$JAR_PATH" ]; then
+        echo "[Engine] Iniciando motor BDI (JAR JVM) na porta $PORT..." >> "$LOG_FILE"
+        java -jar "$JAR_PATH" "$SCRIPT_DIR/diluvio.jcm" --port "$PORT" >> "$LOG_FILE" 2>&1 &
+    else
+        echo "[Engine] ERRO: JAR não encontrado em $JAR_PATH." >> "$LOG_FILE"
+        echo "JAR não encontrado!"
+        exit 1
+    fi
     ENGINE_PID=$!
-    sleep 2
+    sleep 5
 }
 
 stop_engine() {
     if [ -n "$ENGINE_PID" ] && kill -0 "$ENGINE_PID" 2>/dev/null; then
-        kill "$ENGINE_PID" 2>/dev/null || true
+        kill -9 "$ENGINE_PID" 2>/dev/null || true
         wait "$ENGINE_PID" 2>/dev/null || true
         ENGINE_PID=""
+        sleep 1
     fi
 }
 
@@ -62,7 +71,8 @@ cleanup_docker() {
               panteao-test-java panteao-test-csharp panteao-test-typescript \
               panteao-test-kotlin panteao-test-scala panteao-test-r \
               panteao-test-swift panteao-test-objc panteao-test-dart \
-              panteao-test-php panteao-test-ruby panteao-test-shell >/dev/null 2>&1 || true
+              panteao-test-php panteao-test-ruby panteao-test-shell \
+              panteao-test-cobol >/dev/null 2>&1 || true
               
     # Prune only dangling build cache (do NOT delete pulled base images)
     docker builder prune -f >/dev/null 2>&1 || true
@@ -96,8 +106,15 @@ run_test() {
         return
     fi
 
+    # Copy local SDK if exists for the language
+    if [ -d "$PROJECT_DIR/sdk/$LANG_NAME" ]; then
+        rm -rf "$LANG_DIR/sdk"
+        cp -r "$PROJECT_DIR/sdk/$LANG_NAME" "$LANG_DIR/sdk"
+    fi
+
     # 1. Build image
     local BUILD_START=$(date +%s%N)
+
     if ! docker build --network=host -t "$DOCKER_TAG" "$LANG_DIR" >> "$LOG_FILE" 2>&1; then
         echo -e "${RED}[FAILED BUILD]${NC} (verifique $LOG_FILE)"
         echo -e "  Result: ${RED}FAILED BUILD${NC}" >> "$METRICS_FILE"
@@ -128,15 +145,16 @@ run_test() {
     # 5. Check outcome
     local STATUS="${RED}[FAILED]${NC}"
     local PASSED="NO"
-    if [ $RUN_EXIT -eq 0 ] && echo "$OUTPUT" | grep -qi "sucesso\|success\|ok\|connected\|completed"; then
+    if [ $RUN_EXIT -eq 0 ] && echo "$OUTPUT" | grep -Fq "[DILUVIO] SUCCESS"; then
         STATUS="${GREEN}[OK]${NC} (${RUN_MS}ms)"
         PASSED="YES"
     fi
 
     echo -ne "$STATUS | Cleaning... "
 
-    # 6. Delete test image
+    # 6. Delete test image and local SDK copy
     docker rmi "$DOCKER_TAG" >> "$LOG_FILE" 2>&1 || true
+    rm -rf "$LANG_DIR/sdk"
     
     # 7. Clean up dangling local builds only
     docker builder prune -f >> "$LOG_FILE" 2>&1 || true
@@ -177,13 +195,21 @@ LANGUAGES=(
     "php"
     "ruby"
     "shell"
+    "cobol"
 )
 
 TOTAL_LANG=${#LANGUAGES[@]}
 FAILED_TESTS=0
 
+if [ -n "$1" ]; then
+    LANGUAGES=("$1")
+    TOTAL_LANG=1
+fi
+
 for i in "${!LANGUAGES[@]}"; do
-    run_test "$((i+1))" "$TOTAL_LANG" "${LANGUAGES[$i]}" || FAILED_TESTS=$((FAILED_TESTS+1))
+    if ! run_test "$((i+1))" "$TOTAL_LANG" "${LANGUAGES[$i]}"; then
+        FAILED_TESTS=$((FAILED_TESTS+1))
+    fi
 done
 
 echo ""

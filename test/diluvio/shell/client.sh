@@ -1,39 +1,26 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+source sdk/panteao_client.sh
 
-HOST="127.0.0.1"
-PORT=44444
+echo "[DILUVIO] Shell client starting"
 
-echo "[DILUVIO] Shell/Bash client starting"
+function handle_scale_up_servers() {
+    echo "[DILUVIO] Action handled: scale_up_servers"
+    panteao_send_action_result "$1" true
+    echo "[DILUVIO] SUCCESS"
+    panteao_close
+    exit 0
+}
 
-# Open TCP connection on FD 3
-exec 3<>/dev/tcp/$HOST/$PORT
+panteao_register_action "scale_up_servers" "handle_scale_up_servers"
+
+panteao_connect "127.0.0.1" 44444
 
 echo "[DILUVIO] Connected!"
-sleep 1
+panteao_send_msg "tell" "external" "orquestrador" "high_latency(600)"
 
-# Send perception
-PERCEPT='{"type":"perception","action":"add","perception":"high_latency(750)"}'
-echo "[DILUVIO] Sending: $PERCEPT"
-echo "$PERCEPT" >&3
+panteao_process_actions 10
 
-# Read response line by line
-while read -r line <&3; do
-    echo "[DILUVIO] Received: $line"
-    if [[ "$line" == *'"type":"action"'* ]]; then
-        # Parse action id using bash regex
-        if [[ "$line" =~ \"id\":\"([^\"]+)\" ]]; then
-            ACTION_ID="${BASH_REMATCH[1]}"
-            RESPONSE="{\"type\":\"action_result\",\"id\":\"$ACTION_ID\",\"success\":true}"
-            echo "[DILUVIO] Sending result: $RESPONSE"
-            echo "$RESPONSE" >&3
-            echo "[DILUVIO] SUCCESS"
-            break
-        fi
-    fi
-done
-
-# Close FD 3
-exec 3>&-
-exec 3<&-
-exit 0
+sleep 5
+echo "[DILUVIO] TIMEOUT"
+panteao_close
+exit 1
