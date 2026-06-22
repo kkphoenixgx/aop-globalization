@@ -1,5 +1,5 @@
 {
-  "name": "panteao",
+  "name": "panteao-js",
   "version": "1.0.0",
   "description": "JavaScript client for the Panteao BDI agent engine",
   "main": "index.js",

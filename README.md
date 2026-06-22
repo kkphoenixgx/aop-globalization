@@ -182,13 +182,13 @@ func main() {
 Install the package:
 
 ```bash
-npm install panteao
+npm install panteao-js
 ```
 
 #### Connection Client
 
 ```javascript
-const { Panteao } = require('panteao');
+const { Panteao } = require('panteao-js');
 
 const engine = new Panteao({ host: '127.0.0.1', port: 44444 });
 engine.connect();
@@ -233,16 +233,27 @@ await BrowserBridgeClass.sendMsg("tell", "external", "orquestrador", "temperatur
 Install the package:
 
 ```bash
-npm install panteao
+npm install panteao-ts
 ```
+
+The package ships with **full TypeScript types** built-in — no need to install a separate `@types/` package.
+
+#### Exported Types
+
+| Type / Interface | Description |
+|---|---|
+| `BdiClientOptions` | Constructor options (`host`, `port`, `project`, `binPath`, `autoReconnect`, `reconnectInterval`) |
+| `ActionCallback` | `(args: string[], respond: (success: boolean) => void) => void` |
+| `Panteao` / `Panteão` | Main client class alias (also exported as `BdiClient`) |
 
 #### Connection Client
 
 ```typescript
-import { Panteao } from 'panteao';
+import { Panteao, BdiClientOptions } from 'panteao-ts';
 
-const engine = new Panteao({ host: '127.0.0.1', port: 44444 });
-engine.connect();
+const options: BdiClientOptions = { host: '127.0.0.1', port: 44444 };
+const engine = new Panteao(options);
+await engine.connect();
 
 engine.on('achieve', (sender: string, receiver: string, content: string) => {
     console.log(`Performative achieve received: ${content}`);
@@ -250,6 +261,19 @@ engine.on('achieve', (sender: string, receiver: string, content: string) => {
 });
 
 engine.sendMsg('tell', 'external', 'orquestrador', 'temperature(room_1, 35)');
+```
+
+#### Spawning the engine programmatically
+
+```typescript
+import { Panteao } from 'panteao-ts';
+
+// Spawns the native binary automatically
+const engine = new Panteao({ project: './project.jcm' });
+await engine.connect(); // engine process starts here
+
+engine.on('disconnect', () => console.log('Engine stopped'));
+engine.close();
 ```
 
 #### Web Browser Integration

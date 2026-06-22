@@ -1,5 +1,5 @@
 {
-  "name": "panteaots",
+  "name": "panteao-ts",
   "version": "1.0.0",
   "description": "TypeScript client for the Panteao BDI agent engine",
   "main": "./dist/cjs/index.js",
