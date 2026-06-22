@@ -38,7 +38,7 @@ jobs:
             bin_name: panteao-engine
             artifact_name: engine-darwin-arm64
 
-          - os: macos-13
+          - os: macos-15-intel
             pkg: panteao-engine-darwin-x64
             engine_dir: sdk/engines/darwin-x64
             bin_name: panteao-engine
