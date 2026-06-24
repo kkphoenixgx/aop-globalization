@@ -6,6 +6,6 @@
   "cpu": ["x64"],
   "license": "MIT",
   "files": [
-    "bin/panteao-engine"
+    "bin"
   ]
 }

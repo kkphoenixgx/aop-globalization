@@ -1,8 +1,11 @@
 {
   "name": "panteao-engine-darwin-x64",
   "version": "0.0.1",
-  "description": "Panteao GraalVM native engine binary for macOS Intel x64 (coming soon)",
+  "description": "Panteao GraalVM native engine binary for macOS Intel x64",
   "os": ["darwin"],
   "cpu": ["x64"],
-  "license": "MIT"
+  "license": "MIT",
+  "files": [
+    "bin"
+  ]
 }

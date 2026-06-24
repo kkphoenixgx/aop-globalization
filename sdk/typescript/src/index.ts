@@ -12,7 +12,8 @@ function findEngineBinary(binName: string): string | null {
         process.cwd(),
         path.resolve(process.cwd(), 'node_modules'),
         path.resolve(process.cwd(), '..'),
-        path.resolve(process.cwd(), '..', '..')
+        path.resolve(process.cwd(), '..', '..'),
+        path.resolve(process.cwd(), '..', '..', '..')
     ];
 
     const candidates: string[] = [];
@@ -25,6 +26,11 @@ function findEngineBinary(binName: string): string | null {
             path.join(root, 'bin', binName),
             path.join(root, binName)
         );
+    }
+
+    const envPath = process.env.PANTEAO_ENGINE_PATH || process.env.PANTEAO_ENGINE_BIN;
+    if (envPath) {
+        candidates.push(envPath);
     }
 
     for (const candidate of candidates) {
@@ -118,6 +124,25 @@ export class BdiClient extends EventEmitter {
             if (this.port === 0) {
                 this.port = await getFreePort();
             }
+
+            if (!fs.existsSync(this.binPath)) {
+                const errMsg = `[Panteão] Engine binary not found at resolved path: ${this.binPath}. ` +
+                            `Ensure the correct architecture package (panteao-engine-${process.platform}-${process.arch}) is installed ` +
+                            `or provide a valid absolute path via the 'binPath' option.`;
+                
+                this.emit('error', new Error(errMsg));
+                throw new Error(errMsg);
+            }
+
+            if (process.platform !== 'win32') {
+                try {
+                    fs.accessSync(this.binPath, fs.constants.X_OK);
+                } catch (e) {
+                    fs.chmodSync(this.binPath, 0o755);
+                }
+            }
+
+
             const args = [this.project, '--port', String(this.port)];
             this.process = child_process.spawn(this.binPath, args, { stdio: 'ignore' });
             await new Promise((resolve) => setTimeout(resolve, 800));

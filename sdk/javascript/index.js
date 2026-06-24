@@ -12,7 +12,8 @@ function findEngineBinary(binName) {
         path.resolve(process.cwd(), 'node_modules'),
         __dirname,
         path.resolve(__dirname, '..'),
-        path.resolve(__dirname, '..', '..')
+        path.resolve(__dirname, '..', '..'),
+        path.resolve(__dirname, '..', '..', '..')
     ];
 
     const candidates = [];
@@ -25,6 +26,11 @@ function findEngineBinary(binName) {
             path.join(root, 'bin', binName),
             path.join(root, binName)
         );
+    }
+
+    const envPath = process.env.PANTEAO_ENGINE_PATH || process.env.PANTEAO_ENGINE_BIN;
+    if (envPath) {
+        candidates.push(envPath);
     }
 
     for (const candidate of candidates) {
@@ -87,8 +93,25 @@ class Panteao extends EventEmitter {
             if (this.port === 0) {
                 this.port = await this._getFreePort();
             }
+
+            if (!fs.existsSync(this.binPath)) {
+                const errMsg = `[Panteão] Engine binary not found at resolved path: ${this.binPath}. ` +
+                            `Ensure the correct architecture package (panteao-engine-${process.platform}-${process.arch}) is installed ` +
+                            `or provide a valid absolute path via the 'binPath' option.`;
+                
+                this.emit('error', new Error(errMsg));
+                throw new Error(errMsg);
+            }
+
+            // Interceptação de permissão (Útil para Mac/Linux locais)
+            if (process.platform !== 'win32') {
+                try {
+                    fs.accessSync(this.binPath, fs.constants.X_OK);
+                } catch (e) {
+                    fs.chmodSync(this.binPath, 0o755);
+                }
+            }
             
-            // Spawn the GraalVM native engine
             const spawnArgs = [this.project, '--port', String(this.port)];
             this.child = child_process.spawn(this.binPath, spawnArgs, {
                 stdio: ['ignore', 'inherit', 'inherit']

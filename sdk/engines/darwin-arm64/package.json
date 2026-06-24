@@ -1,8 +1,11 @@
 {
   "name": "panteao-engine-darwin-arm64",
   "version": "0.0.1",
-  "description": "Panteao GraalVM native engine binary for macOS ARM64/Apple Silicon (coming soon)",
+  "description": "Panteao GraalVM native engine binary for macOS ARM64/Apple Silicon",
   "os": ["darwin"],
   "cpu": ["arm64"],
-  "license": "MIT"
+  "license": "MIT",
+  "files": [
+    "bin"
+  ]
 }
