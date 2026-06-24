@@ -144,7 +144,17 @@ export class BdiClient extends EventEmitter {
 
 
             const args = [this.project, '--port', String(this.port)];
-            this.process = child_process.spawn(this.binPath, args, { stdio: 'ignore' });
+            this.process = child_process.spawn(this.binPath, args, { stdio: ["ignore", "pipe", "pipe"] });
+
+
+            this.process.stdout?.on("data", data => {
+                console.log("\x1b[36m[MAS]\x1b[0m", data.toString().trim());
+            });
+
+            this.process.stderr?.on("data", data => {
+                console.error("\x1b[31m[MAS ERROR]\x1b[0m", data.toString().trim());
+            });
+
             await new Promise((resolve) => setTimeout(resolve, 800));
         } else if (this.port === 0) {
             this.port = 44444;
