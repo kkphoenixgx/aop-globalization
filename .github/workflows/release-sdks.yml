@@ -1,78 +1,113 @@
 name: Release & Publish SDKs
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version for the SDKs (e.g. 1.1.0)'
-        required: true
-        default: '1.1.0'
+workflow_dispatch:
 
 permissions:
-  contents: write
+contents: write
 
 jobs:
-  publish-sdks:
-    name: Publish JS and TS SDKs
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+prepare:
+name: Calculate next version
+runs-on: ubuntu-latest
+outputs:
+version: ${{ steps.version.outputs.version }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
+```
+steps:
+  - name: Checkout Repository
+    uses: actions/checkout@v4
+    with:
+      fetch-depth: 0
 
-      # ── JAVASCRIPT SDK ──────────────────────────────────────────────────────
-      - name: Bump JavaScript SDK version
-        working-directory: sdk/javascript
-        run: |
-          node -e "
-            const fs = require('fs');
-            const pkg = JSON.parse(fs.readFileSync('package.json','utf8'));
-            pkg.version = '${{ inputs.version }}';
-            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-          "
+  - id: version
+    run: |
+      BASE_VERSION="1.1"
 
-      - name: Publish JavaScript SDK to npm
-        working-directory: sdk/javascript
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      git fetch --tags
 
-      # ── TYPESCRIPT SDK ──────────────────────────────────────────────────────
-      - name: Bump TypeScript SDK version
-        working-directory: sdk/typescript
-        run: |
-          node -e "
-            const fs = require('fs');
-            const pkg = JSON.parse(fs.readFileSync('package.json','utf8'));
-            pkg.version = '${{ inputs.version }}';
-            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-          "
+      LAST_PATCH=$(git tag -l "v${BASE_VERSION}.*" \
+        | sed "s/v${BASE_VERSION}.//" \
+        | sort -n \
+        | tail -n1)
 
-      - name: Build TypeScript SDK
-        working-directory: sdk/typescript
-        run: |
-          npm install
-          npm run build
+      if [ -z "$LAST_PATCH" ]; then
+        NEXT_PATCH=0
+      else
+        NEXT_PATCH=$((LAST_PATCH + 1))
+      fi
 
-      - name: Publish TypeScript SDK to npm
-        working-directory: sdk/typescript
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      VERSION="${BASE_VERSION}.${NEXT_PATCH}"
 
-      # ── GITHUB RELEASE ──────────────────────────────────────────────────────
-      - name: Create GitHub Release and Tag
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ inputs.version }}
-          name: Release v${{ inputs.version }}
-          draft: false
-          prerelease: false
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      echo "version=$VERSION" >> $GITHUB_OUTPUT
+      echo "Publishing version $VERSION"
+```
+
+publish-sdks:
+name: Publish JS and TS SDKs
+needs: prepare
+runs-on: ubuntu-latest
+
+```
+steps:
+  - name: Checkout Repository
+    uses: actions/checkout@v4
+
+  - name: Setup Node.js
+    uses: actions/setup-node@v4
+    with:
+      node-version: '20'
+      registry-url: 'https://registry.npmjs.org'
+
+  # ── JAVASCRIPT SDK ──────────────────────────────────────────────────
+  - name: Bump JavaScript SDK version
+    working-directory: sdk/javascript
+    run: |
+      node -e "
+        const fs = require('fs');
+        const pkg = JSON.parse(fs.readFileSync('package.json','utf8'));
+        pkg.version = '${{ needs.prepare.outputs.version }}';
+        fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+      "
+
+  - name: Publish JavaScript SDK to npm
+    working-directory: sdk/javascript
+    run: npm publish --access public
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # ── TYPESCRIPT SDK ──────────────────────────────────────────────────
+  - name: Bump TypeScript SDK version
+    working-directory: sdk/typescript
+    run: |
+      node -e "
+        const fs = require('fs');
+        const pkg = JSON.parse(fs.readFileSync('package.json','utf8'));
+        pkg.version = '${{ needs.prepare.outputs.version }}';
+        fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+      "
+
+  - name: Build TypeScript SDK
+    working-directory: sdk/typescript
+    run: |
+      npm install
+      npm run build
+
+  - name: Publish TypeScript SDK to npm
+    working-directory: sdk/typescript
+    run: npm publish --access public
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # ── GITHUB RELEASE ──────────────────────────────────────────────────
+  - name: Create GitHub Release and Tag
+    uses: softprops/action-gh-release@v2
+    with:
+      tag_name: v${{ needs.prepare.outputs.version }}
+      name: Release v${{ needs.prepare.outputs.version }}
+      draft: false
+      prerelease: false
+      generate_release_notes: true
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```

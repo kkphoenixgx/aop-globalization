@@ -1,23 +1,56 @@
+```yaml
 name: Build Engine Binaries
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Engine version (e.g. 1.1.0)'
-        required: true
-        default: '1.1.0'
 
 permissions:
   contents: write
 
 jobs:
+  # ── Descobre automaticamente a próxima versão ────────────────────────────
+  prepare:
+    name: Calculate next version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: version
+        run: |
+          BASE_VERSION="1.1"
+
+          git fetch --tags
+
+          LAST_PATCH=$(git tag -l "v${BASE_VERSION}.*" \
+            | sed "s/v${BASE_VERSION}.//" \
+            | sort -n \
+            | tail -n1)
+
+          if [ -z "$LAST_PATCH" ]; then
+            NEXT_PATCH=0
+          else
+            NEXT_PATCH=$((LAST_PATCH + 1))
+          fi
+
+          VERSION="${BASE_VERSION}.${NEXT_PATCH}"
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Next version will be $VERSION"
+
+  # ── Build dos binários ───────────────────────────────────────────────────
   build:
     name: Build on ${{ matrix.os }}
+    needs: prepare
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
+
     strategy:
-      fail-fast: false   # ← uma plataforma falhar não cancela as outras
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -59,8 +92,6 @@ jobs:
         run: ./gradlew copyNativeEngine
         shell: bash
 
-      # ── Prepara o pacote npm do engine ──────────────────────────────────────
-
       - name: Copy binary into engine package (Linux/macOS)
         if: runner.os != 'Windows'
         run: |
@@ -82,27 +113,25 @@ jobs:
           node -e "
             const fs = require('fs');
             const pkg = JSON.parse(fs.readFileSync('package.json','utf8'));
-            pkg.version = '${{ github.event.inputs.version }}';
+            pkg.version = '${{ needs.prepare.outputs.version }}';
             pkg.description = (pkg.description || '').replace(' (coming soon)', '');
             fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
           "
 
-      # ── Upload do binário como artefato do workflow ─────────────────────────
-
       - name: Upload engine artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}-${{ github.event.inputs.version }}
+          name: ${{ matrix.artifact_name }}-${{ needs.prepare.outputs.version }}
           path: ${{ matrix.engine_dir }}/
           retention-days: 30
 
-  # ── Job separado: publica após todos os builds terminarem ──────────────────
-
+  # ── Publicação no npm ────────────────────────────────────────────────────
   publish:
     name: Publish ${{ matrix.pkg }} to npm
-    needs: build
+    needs: [prepare, build]
     runs-on: ubuntu-latest
-    if: always()   # roda mesmo se algum build falhar (publica os que tiverem sucesso)
+    if: always()
+
     strategy:
       fail-fast: false
       matrix:
@@ -127,20 +156,19 @@ jobs:
       - name: Download engine artifact
         uses: actions/download-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}-${{ github.event.inputs.version }}
+          name: ${{ matrix.artifact_name }}-${{ needs.prepare.outputs.version }}
           path: ${{ matrix.engine_dir }}
-        continue-on-error: true   # pula se o build daquela plataforma falhou
+        continue-on-error: true
 
       - name: Check if artifact exists
         id: check
+        shell: bash
         run: |
           if [ -f "${{ matrix.engine_dir }}/package.json" ]; then
             echo "exists=true" >> $GITHUB_OUTPUT
           else
             echo "exists=false" >> $GITHUB_OUTPUT
-            echo "⚠️ Artifact not found for ${{ matrix.pkg }} — skipping publish"
           fi
-        shell: bash
 
       - name: Setup Node.js
         if: steps.check.outputs.exists == 'true'
@@ -160,3 +188,4 @@ jobs:
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+```
