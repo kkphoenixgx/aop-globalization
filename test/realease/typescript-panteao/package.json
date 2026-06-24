@@ -9,8 +9,5 @@
   },
   "keywords": [],
   "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "panteao-ts": "file:../../../sdk/typescript"
-  }
+  "license": "MIT"
 }

@@ -2,8 +2,9 @@
 FROM node:20-bookworm-slim AS builder
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm install --save panteao-ts && npm install --save-dev typescript @types/node
+COPY package.json ./
+
+RUN npm install panteao-ts typescript @types/node
 
 COPY tsconfig.json ./
 COPY src ./src
