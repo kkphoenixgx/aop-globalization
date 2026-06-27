@@ -11,6 +11,10 @@ permissions:
   contents: write
   id-token: write
 
+concurrency:
+  group: release-sdks-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   prepare:
     name: Calculate next version
