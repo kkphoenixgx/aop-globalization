@@ -96,9 +96,10 @@ class Panteao:
                 match = pattern.match(line)
                 if match:
                     # \033[36m is Cyan ANSI code
-                    print(f"\033[36m[{match.group(1)}]\033[0m {match.group(2)}")
+                    name = match.group(1).split('.')[-1]
+                    print(f"\033[36m[{name}]\033[0m {match.group(2)}", flush=True)
                 else:
-                    print(f"\033[36m[MAS]\033[0m {line}")
+                    print(f"\033[36m[MAS]\033[0m {line}", flush=True)
         except Exception:
             pass
 
@@ -217,7 +218,7 @@ class Panteao:
         # We download the published NPM tarball from the registry directly to extract the binary
         url = f"https://registry.npmjs.org/{pkg_name}/-/{pkg_name}-{self.version}.tgz"
         
-        print(f"[Panteao] Downloading native engine for {os_name}-{arch} (v{self.version})...")
+        print(f"[Panteao] Downloading native engine for {os_name}-{arch} (v{self.version})...", flush=True)
         try:
             tar_path = self.bin_path + ".tgz"
             urllib.request.urlretrieve(url, tar_path)
@@ -233,7 +234,7 @@ class Panteao:
             if system != "windows":
                 os.chmod(self.bin_path, os.stat(self.bin_path).st_mode | stat.S_IEXEC)
                 
-            print("[Panteao] Engine downloaded successfully.")
+            print("[Panteao] Engine downloaded successfully.", flush=True)
         except Exception as e:
             raise RuntimeError(f"Failed to download Panteao engine from {url}: {e}")
 

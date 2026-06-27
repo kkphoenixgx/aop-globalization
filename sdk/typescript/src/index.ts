@@ -153,7 +153,8 @@ export class BdiClient extends EventEmitter {
                     if (!line.trim()) continue;
                     const match = line.match(/^\[(.*?)\]\s(.*)/);
                     if (match) {
-                        console.log(`\x1b[36m[${match[1]}]\x1b[0m`, match[2]);
+                        const name = match[1].split('.').pop();
+                        console.log(`\x1b[36m[${name}]\x1b[0m`, match[2]);
                     } else {
                         console.log('\x1b[36m[MAS]\x1b[0m', line);
                     }
