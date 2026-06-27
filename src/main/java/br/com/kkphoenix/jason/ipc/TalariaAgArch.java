@@ -18,10 +18,18 @@ import org.json.JSONObject;
  *
  *   .send(talaria, tell, update_dashboard("EVACUATE", "critical"))
  *
- * The SDK receives:
- *   {"type":"message","performative":"tell","sender":"orquestrador","content":"update_dashboard(...)"}
+ * PERFORMANCE AND ARCHITECTURE NOTES:
+ * 1. Why AgArch instead of Jason plans (+message)? 
+ *    By intercepting messages directly in checkMail(), we steal the messages 
+ *    from the mailbox before they enter the agent's Belief Base. This bypasses 
+ *    the entire Jason Reasoning Cycle (parsing, unification, plan selection, 
+ *    intention generation), making message relaying infinitely faster and cheaper.
  *
- * No action interception, no action_result handshake. Pure BDI communication.
+ * 2. Why does it not busy-wait? 
+ *    The Jason infrastructure automatically puts agent threads to sleep (0% CPU)
+ *    when their mailbox, event queue, and intention queue are empty. As soon as 
+ *    another agent calls .send(talaria, ...), the infrastructure wakes Talaria up, 
+ *    checkMail() runs instantly, relays the message, and the agent goes back to sleep.
  */
 public class TalariaAgArch extends AgArch {
 
@@ -44,52 +52,32 @@ public class TalariaAgArch extends AgArch {
         checkMessage();
     }
 
-    private int callCount = 0;
-
-    public void checkMessage() {
+    private void checkMessage() {
         try {
-            callCount++;
-            if (callCount <= 10 || callCount % 100 == 0) {
-                logger.info("[Talaria] checkMessage call count: " + callCount);
-            }
-
-            if (getTS() == null) {
-                logger.warning("[Talaria] getTS() is null!");
-                return;
-            }
-            if (getTS().getC() == null) {
-                logger.warning("[Talaria] getTS().getC() is null!");
+            if (getTS() == null || getTS().getC() == null) {
                 return;
             }
             java.util.Queue<Message> mbox = getTS().getC().getMailBox();
-            if (mbox == null) {
-                logger.warning("[Talaria] Mailbox is null!");
+            if (mbox == null || mbox.isEmpty()) {
                 return;
             }
 
-            if (!mbox.isEmpty()) {
-                logger.info("[Talaria] Intercepted " + mbox.size() + " messages in checkMessage.");
-                List<Message> toForward = new ArrayList<>(mbox);
-                mbox.clear();
+            List<Message> toForward = new ArrayList<>(mbox);
+            mbox.clear();
 
-                IPCEnvironment env = IPCEnvironment.getInstance();
-                for (Message msg : toForward) {
-                    if (env == null) {
-                        logger.severe("[Talaria] IPCEnvironment not available. Dropping message from: " + msg.getSender());
-                        continue;
-                    }
-                    JSONObject json = new JSONObject();
-                    json.put("type", "message");
-                    json.put("performative", msg.getIlForce());
-                    json.put("sender", msg.getSender());
-                    json.put("content", msg.getPropCont() != null ? msg.getPropCont().toString() : "");
-                    env.sendToClient(json);
-                    logger.info("[Talaria] Relayed message to client: " + json);
-                }
+            IPCEnvironment env = IPCEnvironment.getInstance();
+            if (env == null) return;
+
+            for (Message msg : toForward) {
+                JSONObject json = new JSONObject();
+                json.put("type", "message");
+                json.put("performative", msg.getIlForce());
+                json.put("sender", msg.getSender());
+                json.put("content", msg.getPropCont() != null ? msg.getPropCont().toString() : "");
+                env.sendToClient(json);
             }
         } catch (Exception e) {
-            logger.severe("[Talaria] Exception in checkMessage: " + e.getMessage());
-            e.printStackTrace();
+            logger.severe("[Talaria] Exception intercepting messages: " + e.getMessage());
         }
     }
 }

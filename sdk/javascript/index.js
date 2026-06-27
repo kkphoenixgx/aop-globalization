@@ -84,7 +84,22 @@ function getFreePort() {
     });
 }
 
+/**
+ * Panteao BDI Engine Client
+ * @class BdiClient
+ * @extends EventEmitter
+ */
 class BdiClient extends EventEmitter {
+    /**
+     * Creates a new Panteao BDI client instance.
+     * @param {Object} [options] Configuration options for the client
+     * @param {string} [options.host='127.0.0.1'] Host address to connect to
+     * @param {number} [options.port=0] Port to connect to. If 0 and project is provided, it will allocate a free port
+     * @param {string} [options.project] Path to the JaCaMo project file (.jcm). If provided, it will spawn the engine locally
+     * @param {boolean} [options.autoReconnect] Whether to automatically reconnect on disconnect (defaults to true if project is not provided)
+     * @param {number} [options.reconnectInterval=2000] Delay in milliseconds before attempting to reconnect
+     * @param {string} [options.binPath] Explicit path to the panteao-engine binary executable
+     */
     constructor(options = {}) {
         super();
 
@@ -135,6 +150,12 @@ class BdiClient extends EventEmitter {
         this.binPath = binPath;
     }
 
+    /**
+     * Connects to the BDI engine via TCP socket. If a project was specified in options, 
+     * it will spawn the native engine process in the background first.
+     * @returns {Promise<void>} Resolves when connection and handshake are successfully established
+     * @throws {Error} If the binary is not found or connection fails
+     */
     async connect() {
         if (this.project) {
             if (this.port === 0) {
@@ -190,8 +211,8 @@ class BdiClient extends EventEmitter {
             this.process.stderr?.on(
                 'data',
                 data => {
-                    console.error(
-                        '\x1b[31m[MAS ERROR]\x1b[0m',
+                    console.log(
+                        '\x1b[36m[MAS]\x1b[0m',
                         data.toString().trim()
                     );
                 }
@@ -585,6 +606,13 @@ class BdiClient extends EventEmitter {
         return s;
     }
 
+    /**
+     * Sends a speech act message to an agent in the engine.
+     * @param {string} performative The KQML performative (e.g., 'tell', 'achieve', 'askIf', 'tellHow')
+     * @param {string} sender The name of the sender (can be an external application name)
+     * @param {string} receiver The name of the receiving agent
+     * @param {string} content The message content/literal (e.g., 'temperature(room_1, 35)')
+     */
     sendMsg(
         performative,
         sender,
@@ -602,6 +630,11 @@ class BdiClient extends EventEmitter {
         );
     }
 
+    /**
+     * Sends an environment perception update to the engine.
+     * @param {'add' | 'remove'} action Whether to add or remove the perception
+     * @param {string} perception The perception literal (e.g., 'light_on(room_1)')
+     */
     sendPerception(
         action,
         perception
@@ -615,6 +648,11 @@ class BdiClient extends EventEmitter {
         );
     }
 
+    /**
+     * Registers a callback function to handle actions requested by the BDI agents.
+     * @param {string} actionName The name of the action to intercept
+     * @param {function(string[], function(boolean): void): void} callback Function receiving action arguments and a 'respond' callback to confirm success/failure.
+     */
     registerAction(
         actionName,
         callback
@@ -639,6 +677,9 @@ class BdiClient extends EventEmitter {
         );
     }
 
+    /**
+     * Closes the socket connection and gracefully kills the engine process if it was spawned locally.
+     */
     close() {
         this.autoReconnect = false;
 

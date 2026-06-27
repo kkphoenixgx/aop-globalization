@@ -66,6 +66,15 @@ public class Launcher {
             System.exit(1);
         }
 
+        String projectName = projectFile.getName().toLowerCase();
+        if (
+            projectName.equals("test.jcm") || projectName.equals("teste.jcm") ||
+            projectName.equals("test.mas2j") || projectName.equals("teste.mas2j")
+        ) {
+            logger.severe("Error: The project name cannot be 'test' or 'teste' due to internal Jason restrictions.");
+            System.exit(1);
+        }
+
         String portStr = null;
         for (int i = 0; i < args.length; i++) {
             if (args[i].equals("--port") && i + 1 < args.length) {
@@ -158,6 +167,9 @@ public class Launcher {
         while (matcher.find()) {
             AgentConfig config = new AgentConfig();
             config.name = matcher.group(1);
+            if (config.name.equalsIgnoreCase("test") || config.name.equalsIgnoreCase("teste")) {
+                throw new IOException("Error: Agent name cannot be 'test' or 'teste' due to internal Jason restrictions.");
+            }
             if (matcher.group(2) != null) {
                 config.aslPath = matcher.group(2).replace("\"", "").replace("'", "");
             } else {

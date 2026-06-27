@@ -152,7 +152,7 @@ export class BdiClient extends EventEmitter {
             });
 
             this.process.stderr?.on("data", data => {
-                console.error("\x1b[31m[MAS ERROR]\x1b[0m", data.toString().trim());
+                console.log("\x1b[36m[MAS]\x1b[0m", data.toString().trim());
             });
 
             await new Promise((resolve) => setTimeout(resolve, 800));

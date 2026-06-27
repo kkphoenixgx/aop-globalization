@@ -1,6 +1,0 @@
-{
-  "type": "module",
-  "dependencies": {
-    "panteao-js": "^1.1.0"
-  }
-}

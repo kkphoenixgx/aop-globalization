@@ -39,3 +39,4 @@ sdk/**/dist/
 coverage/
 .tmp/
 tmp/
+sdk/**/*.tgz

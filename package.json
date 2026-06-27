@@ -12,6 +12,5 @@
     "build:jar": "./gradlew shadowJar",
     "serve": "npx http-server -p 8080"
   },
-  "dependencies": {},
   "private": true
 }
