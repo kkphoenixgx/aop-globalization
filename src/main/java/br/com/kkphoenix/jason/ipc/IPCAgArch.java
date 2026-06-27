@@ -83,10 +83,18 @@ public class IPCAgArch extends AgArch {
         
         JSONObject msg = new JSONObject();
         msg.put("type", "message");
-        msg.put("performative", m.getIlForce());
+        msg.put("ilf", m.getIlForce());
         msg.put("sender", m.getSender());
         msg.put("receiver", m.getReceiver());
+        msg.put("message", m.getPropCont().toString());
+        
+        // Backward compatibility
+        msg.put("performative", m.getIlForce());
         msg.put("content", m.getPropCont().toString());
+        
+        if (m.getMsgId() != null) {
+            msg.put("answer", m.getMsgId());
+        }
         
         IPCEnvironment env = IPCEnvironment.getInstance();
         if (env != null) {

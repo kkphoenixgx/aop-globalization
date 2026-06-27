@@ -5,7 +5,7 @@
 int main() {
     std::cout << "Iniciando Panteao no C++...\n" << std::flush;
     
-    panteao::BdiClient client;
+    panteao::Panteao client;
     client.connect("127.0.0.1", 0, "./project.jcm");
     
     std::cout << "teste log da minha aplicação C++\n" << std::flush;

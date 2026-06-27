@@ -18,7 +18,7 @@ Qualquer wrapper cliente em qualquer linguagem precisa apenas:
 Para subir o motor localmente e expô-lo para o seu programa cliente:
 
 ```bash
-java -jar build/libs/jason-ipc-all.jar seu_projeto.jcm --port 44444
+java -jar build/libs/jason-ipc-all.jar seu_projeto.jcm --port 0
 ```
 
 ---
@@ -39,9 +39,17 @@ Para injetar crenças ou intenções em um agente, o cliente envia um JSON no se
 
 * **Mensagem enviada pelo Cliente**:
   ```json
-  {"type":"message","performative":"tell","sender":"external","receiver":"nome_do_agente","content":"minha_crenca(valor)"}
+  {
+    "type": "message",
+    "ilf": "tell",
+    "sender": "sensor",
+    "receiver": "bob",
+    "message": "minha_crenca(valor)",
+    "answer": "opcional_msg_id",
+    "timeout": "opcional_milisegundos"
+  }
   ```
-  *Formatos de performativas suportados: tell, untell, achieve, unachieve, askIf, etc.*
+  *Formatos de força ilocucionária (ilf) suportados (KQML): tell, untell, achieve, unachieve, askIf, etc.*
 
 ### Fase 3: Interceptação de Ações
 Quando um agente BDI executa um plano que requer uma ação externa (ex: `update_dashboard("status")`), o motor Jason bloqueia o ciclo daquele agente e despacha uma solicitação de ação para o cliente socket:
@@ -116,7 +124,7 @@ int receive_line(int sock, char* buf, int max_len) {
        DATA DIVISION.
        WORKING-STORAGE SECTION.
        01 SOCK-FD          BINARY-LONG.
-       01 PORT             BINARY-LONG VALUE 44444.
+       01 PORT             BINARY-LONG VALUE 0.
        01 HOST             PIC X(10) VALUE "127.0.0.1".
        01 MSG-SEND         PIC X(200).
        01 MSG-RECV         PIC X(500).
@@ -135,7 +143,7 @@ int receive_line(int sock, char* buf, int max_len) {
            CALL "receive_line" USING BY VALUE SOCK-FD, MSG-RECV, BY VALUE 500.
            
            * Enviar crença informando ordem de evacuação
-           MOVE "{\"type\":\"message\",\"performative\":\"tell\",\"sender\":\"external\",\"receiver\":\"orquestrador\",\"content\":\"evacuation_order(zona_sul)\"}" TO MSG-SEND.
+           MOVE "{\"type\":\"message\",\"ilf\":\"tell\",\"sender\":\"sensor\",\"receiver\":\"bob\",\"message\":\"evacuation_order(zona_sul)\"}" TO MSG-SEND.
            CALL "send_message" USING BY VALUE SOCK-FD, MSG-SEND.
            
            * Aguardar solicitação de ação do agente

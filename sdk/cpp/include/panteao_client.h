@@ -11,10 +11,10 @@
 
 namespace panteao {
 
-class BdiClient {
+class Panteao {
 public:
-    BdiClient();
-    ~BdiClient();
+    Panteao();
+    ~Panteao();
 
     bool connect(const std::string& host, int port, const std::string& project = "");
     bool sendMsg(const std::string& performative, const std::string& sender, const std::string& receiver, const std::string& content);

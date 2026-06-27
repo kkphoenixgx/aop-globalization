@@ -127,6 +127,28 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build and Pack C# SDK
+        working-directory: sdk/csharp
+        run: |
+          sed -i "s/<Version>.*<\/Version>/<Version>${{ needs.prepare.outputs.version }}<\/Version>/" Panteao.Client.csproj
+          sed -i "s/sdkVersion = \".*\"/sdkVersion = \"${{ needs.prepare.outputs.version }}\"/" src/BdiClient.cs
+          dotnet pack -c Release -o out
+
+      - name: NuGet Login
+        uses: NuGet/login@v1
+        with:
+          owner: ${{ github.repository_owner }}
+
+      - name: Publish C# SDK to NuGet
+        working-directory: sdk/csharp
+        run: dotnet nuget push out/*.nupkg --source https://api.nuget.org/v3/index.json --skip-duplicate
+        continue-on-error: true
+
       - name: Create GitHub Release and Tag
         uses: softprops/action-gh-release@v2
         with:

@@ -7,9 +7,9 @@ using System.Threading;
 using System.Text.Json;
 using System.Collections.Generic;
 
-namespace Panteao.Client
+namespace Panteao.Sdk
 {
-    public class BdiClient : IDisposable
+    public class Panteao : IDisposable
     {
         private readonly TcpClient _client;
         private readonly NetworkStream _stream;
@@ -53,7 +53,86 @@ namespace Panteao.Client
             return binName;
         }
 
-        public BdiClient(string host, int port, string project = null)
+        private static void PrintLog(string line)
+        {
+            if (string.IsNullOrWhiteSpace(line)) return;
+            var match = System.Text.RegularExpressions.Regex.Match(line, @"^\[(.*?)\]\s(.*)");
+            if (match.Success)
+            {
+                var rawName = match.Groups[1].Value;
+                var parts = rawName.Split('.');
+                var name = parts[parts.Length - 1];
+                Console.WriteLine($"\x1b[36m[{name}]\x1b[0m {match.Groups[2].Value}");
+            }
+            else
+            {
+                Console.WriteLine($"\x1b[36m[MAS]\x1b[0m {line}");
+            }
+        }
+
+        private static void DownloadEngine()
+        {
+            string osName = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? "win32" :
+                            System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX) ? "darwin" : "linux";
+            string arch = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture == System.Runtime.InteropServices.Architecture.Arm64 ? "arm64" : "x64";
+            
+            string sdkVersion = "1.0.0"; // To be bumped by CI
+            string pkgName = $"panteao-engine-{osName}-{arch}";
+            string url = $"https://registry.npmjs.org/{pkgName}/-/{pkgName}-{sdkVersion}.tgz";
+            
+            Console.WriteLine($"[Panteao] Downloading native engine for {osName}-{arch} (v{sdkVersion})...");
+            
+            string tempTgz = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "panteao.tgz");
+            
+            using (var client = new System.Net.Http.HttpClient())
+            {
+                var bytes = client.GetByteArrayAsync(url).GetAwaiter().GetResult();
+                File.WriteAllBytes(tempTgz, bytes);
+            }
+
+            var p = new System.Diagnostics.Process();
+            p.StartInfo.FileName = "tar";
+            if (osName == "win32")
+            {
+                p.StartInfo.Arguments = $"-xf panteao.tgz package/bin/panteao-engine.exe";
+                p.StartInfo.WorkingDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            }
+            else
+            {
+                p.StartInfo.Arguments = $"-xz --strip-components=2 package/bin/panteao-engine";
+                p.StartInfo.WorkingDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            }
+            p.StartInfo.UseShellExecute = false;
+            p.StartInfo.CreateNoWindow = true;
+            p.Start();
+            p.WaitForExit();
+            
+            if (osName == "win32")
+            {
+                string src = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "package", "bin", "panteao-engine.exe");
+                string dest = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "panteao-engine.exe");
+                if (File.Exists(src))
+                {
+                    if (File.Exists(dest)) File.Delete(dest);
+                    File.Move(src, dest);
+                    Directory.Delete(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "package"), true);
+                }
+            }
+            else
+            {
+                string dest = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "panteao-engine");
+                var chmod = new System.Diagnostics.Process();
+                chmod.StartInfo.FileName = "chmod";
+                chmod.StartInfo.Arguments = $"+x {dest}";
+                chmod.Start();
+                chmod.WaitForExit();
+            }
+            
+            File.Delete(tempTgz);
+            Console.WriteLine("[Panteao] Engine downloaded successfully.");
+        }
+
+        public Panteao(string host, int port, string project = null)
         {
             if (string.IsNullOrEmpty(host))
             {
@@ -66,12 +145,24 @@ namespace Panteao.Client
                     port = GetFreePort();
                 }
                 string bin = FindBinary();
+                if (bin == "panteao-engine" || bin == "panteao-engine.exe")
+                {
+                    DownloadEngine();
+                    bin = FindBinary();
+                }
+                
                 _process = new System.Diagnostics.Process();
                 _process.StartInfo.FileName = bin;
                 _process.StartInfo.Arguments = $"\"{project}\" --port {port}";
                 _process.StartInfo.UseShellExecute = false;
                 _process.StartInfo.CreateNoWindow = true;
+                _process.StartInfo.RedirectStandardOutput = true;
+                _process.StartInfo.RedirectStandardError = true;
+                _process.OutputDataReceived += (s, e) => PrintLog(e.Data);
+                _process.ErrorDataReceived += (s, e) => PrintLog(e.Data);
                 _process.Start();
+                _process.BeginOutputReadLine();
+                _process.BeginErrorReadLine();
                 Thread.Sleep(800);
             }
             else
@@ -105,6 +196,14 @@ namespace Panteao.Client
         public System.Threading.Tasks.Task ConnectAsync()
         {
             return System.Threading.Tasks.Task.CompletedTask;
+        }
+
+        public void Wait()
+        {
+            while (_running)
+            {
+                Thread.Sleep(500);
+            }
         }
 
         public void SendMsg(string performative, string sender, string receiver, string content)

@@ -259,10 +259,10 @@ class Panteao:
     def send_msg(self, performative: str, sender: str, receiver: str, content: str) -> None:
         payload = {
             "type": "message",
-            "performative": performative,
+            "ilf": performative,
             "sender": sender,
             "receiver": receiver,
-            "content": content
+            "message": content
         }
         self.socket.sendall((json.dumps(payload) + "\n").encode('utf-8'))
 

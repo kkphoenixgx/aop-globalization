@@ -137,15 +137,20 @@ Boilerplate code:
 ```python
 from panteao import Panteao
 
-engine = Panteao(host="127.0.0.1", port=44444)
+# Spawns the native binary automatically
+engine = Panteao(host="127.0.0.1", port=0, project="./project.jcm")
 engine.connect()
 
-engine.register_performative("achieve", lambda sender, receiver, content: (
-    print(f"Performative achieve received: {content}"),
-    engine.send_msg("tell", "sensor", sender, "ac_status(on)")
-))
+def turn_on_ac(args, respond):
+    print("Action received! Turning on AC.")
+    engine.send_msg("tell", "sensor", "bob", "ac_status(on)")
+    respond(True) # Action successful
 
-engine.send_msg("tell", "external", "orquestrador", "temperature(room_1, 35)")
+engine.register_action("turn_on_ac", turn_on_ac)
+engine.send_msg("tell", "sensor", "bob", "temperature(room_1, 35)")
+
+# Block until the process is interrupted
+engine.wait()
 ```
 
 ### Go
@@ -164,7 +169,7 @@ package main
 import "github.com/kkphoenixgx/panteao/sdk/go"
 
 func main() {
-	engine := panteao.New("127.0.0.1:44444")
+	engine := panteao.New("127.0.0.1:0")
 	engine.Connect()
 
 	engine.RegisterPerformative("achieve", func(sender, receiver, content string) {
@@ -172,7 +177,7 @@ func main() {
 		engine.SendMsg("tell", "sensor", sender, "ac_status(on)")
 	})
 
-	engine.SendMsg("tell", "external", "orquestrador", "temperature(room_1, 35)")
+	engine.SendMsg("tell", "sensor", "bob", "temperature(room_1, 35)")
 	select {}
 }
 ```
@@ -190,42 +195,17 @@ npm install panteao-js
 ```javascript
 const { Panteao } = require('panteao-js');
 
-const engine = new Panteao({ host: '127.0.0.1', port: 44444 });
+// Spawns the native binary automatically
+const engine = new Panteao({ project: './project.jcm' });
 engine.connect();
 
-engine.on('achieve', (sender, receiver, content) => {
-    console.log(`Performative achieve received: ${content}`);
-    engine.sendMsg('tell', 'sensor', sender, 'ac_status(on)');
+engine.registerAction('turn_on_ac', (args, respond) => {
+    console.log("Action received! Turning on AC.");
+    engine.sendMsg('tell', 'sensor', 'bob', 'ac_status(on)');
+    respond(true); // Action successful
 });
 
-engine.sendMsg('tell', 'external', 'orquestrador', 'temperature(room_1, 35)');
-```
-
-#### Web Browser Integration
-
-```javascript
-async function Java_br_com_kkphoenix_jason_ipc_BrowserBridge_nativeDispatchAction(lib, agent, actionId, actionTerm) {
-    const agentStr = String(agent);
-    const idStr = String(actionId);
-    const termStr = String(actionTerm);
-    
-    console.log(`Action received: ${termStr} from agent ${agentStr}`);
-    
-    await BrowserBridgeClass.completeAction(idStr, true);
-}
-
-await cheerpjInit({
-    version: 17,
-    status: "none",
-    natives: {
-        Java_br_com_kkphoenix_jason_ipc_BrowserBridge_nativeDispatchAction
-    }
-});
-
-const libInstance = await cheerpjRunLibrary("/path/to/jason-ipc-all.jar");
-const BrowserBridgeClass = await libInstance.br.com.kkphoenix.jason.ipc.BrowserBridge;
-
-await BrowserBridgeClass.sendMsg("tell", "external", "orquestrador", "temperature(room_1, 35)");
+engine.sendMsg('tell', 'sensor', 'bob', 'temperature(room_1, 35)');
 ```
 
 ### TypeScript
@@ -249,61 +229,19 @@ The package ships with **full TypeScript types** built-in — no need to install
 #### Connection Client
 
 ```typescript
-import { Panteao, BdiClientOptions } from 'panteao-ts';
-
-const options: BdiClientOptions = { host: '127.0.0.1', port: 44444 };
-const engine = new Panteao(options);
-await engine.connect();
-
-engine.on('achieve', (sender: string, receiver: string, content: string) => {
-    console.log(`Performative achieve received: ${content}`);
-    engine.sendMsg('tell', 'sensor', sender, 'ac_status(on)');
-});
-
-engine.sendMsg('tell', 'external', 'orquestrador', 'temperature(room_1, 35)');
-```
-
-#### Spawning the engine programmatically
-
-```typescript
 import { Panteao } from 'panteao-ts';
 
 // Spawns the native binary automatically
 const engine = new Panteao({ project: './project.jcm' });
-await engine.connect(); // engine process starts here
+await engine.connect();
 
-engine.on('disconnect', () => console.log('Engine stopped'));
-engine.close();
-```
-
-#### Web Browser Integration
-
-```typescript
-declare const cheerpjInit: (config: any) => Promise<void>;
-declare const cheerpjRunLibrary: (path: string) => Promise<any>;
-
-async function Java_br_com_kkphoenix_jason_ipc_BrowserBridge_nativeDispatchAction(lib: any, agent: any, actionId: any, actionTerm: any) {
-    const agentStr = String(agent);
-    const idStr = String(actionId);
-    const termStr = String(actionTerm);
-    
-    console.log(`Action received: ${termStr} from agent ${agentStr}`);
-    
-    await BrowserBridgeClass.completeAction(idStr, true);
-}
-
-await cheerpjInit({
-    version: 17,
-    status: "none",
-    natives: {
-        Java_br_com_kkphoenix_jason_ipc_BrowserBridge_nativeDispatchAction
-    }
+engine.registerAction('turn_on_ac', (args: string[], respond: (success: boolean) => void) => {
+    console.log("Action received! Turning on AC.");
+    engine.sendMsg('tell', 'sensor', 'bob', 'ac_status(on)');
+    respond(true); // Action successful
 });
 
-const libInstance = await cheerpjRunLibrary("/path/to/jason-ipc-all.jar");
-const BrowserBridgeClass = await libInstance.br.com.kkphoenix.jason.ipc.BrowserBridge;
-
-await BrowserBridgeClass.sendMsg("tell", "external", "orquestrador", "temperature(room_1, 35)");
+engine.sendMsg('tell', 'sensor', 'bob', 'temperature(room_1, 35)');
 ```
 
 ### Rust
@@ -321,16 +259,16 @@ Boilerplate code:
 use panteao::Panteao;
 
 fn main() {
-    let mut engine = Panteao::new("127.0.0.1:44444");
+    let mut engine = Panteao::new("127.0.0.1:0");
     engine.connect().unwrap();
 
-    engine.register_performative("achieve", |sender, receiver, content| {
+    engine.registerAction("turn_on_ac", |sender, receiver, content| {
         println!("Performative achieve received: {}", content);
         engine.send_msg("tell", "sensor", sender, "ac_status(on)").unwrap();
     });
 
-    engine.send_msg("tell", "external", "orquestrador", "temperature(room_1, 35)").unwrap();
-    engine.block_until_closed();
+    engine.send_msg("tell", "sensor", "bob", "temperature(room_1, 35)").unwrap();
+    engine.wait();
 }
 ```
 
@@ -353,15 +291,15 @@ import br.com.kkphoenix.jason.ipc.sdk.Panteao;
 
 public class Main {
     public static void main(String[] args) throws Exception {
-        Panteao engine = new Panteao("127.0.0.1", 44444);
+        Panteao engine = new Panteao("127.0.0.1", 0);
         engine.connect();
 
-        engine.registerPerformative("achieve", (sender, receiver, content) -> {
+        engine.registerAction("turn_on_ac", (sender, receiver, content) -> {
             System.out.println("Performative achieve received: " + content);
             engine.sendMsg("tell", "sensor", sender, "ac_status(on)");
         });
 
-        engine.sendMsg("tell", "external", "orquestrador", "temperature(room_1, 35)");
+        engine.sendMsg("tell", "sensor", "bob", "temperature(room_1, 35)");
     }
 }
 ```
@@ -380,15 +318,15 @@ Boilerplate code:
 import br.com.kkphoenix.jason.ipc.sdk.Panteao
 
 fun main() {
-    val engine = Panteao("127.0.0.1", 44444)
+    val engine = Panteao("127.0.0.1", 0)
     engine.connect()
 
-    engine.registerPerformative("achieve") { sender, receiver, content ->
+    engine.registerAction("turn_on_ac") { sender, receiver, content ->
         println("Performative achieve received: $content")
         engine.sendMsg("tell", "sensor", sender, "ac_status(on)")
     }
 
-    engine.sendMsg("tell", "external", "orquestrador", "temperature(room_1, 35)")
+    engine.sendMsg("tell", "sensor", "bob", "temperature(room_1, 35)")
 }
 ```
 
@@ -406,15 +344,15 @@ Boilerplate code:
 import br.com.kkphoenix.jason.ipc.sdk.Panteao
 
 object Main extends App {
-  val engine = new Panteao("127.0.0.1", 44444)
+  val engine = new Panteao("127.0.0.1", 0)
   engine.connect()
 
-  engine.registerPerformative("achieve", (sender, receiver, content) => {
+  engine.registerAction("turn_on_ac", (sender, receiver, content) => {
     println(s"Performative achieve received: $content")
     engine.sendMsg("tell", "sensor", sender, "ac_status(on)")
   })
 
-  engine.sendMsg("tell", "external", "orquestrador", "temperature(room_1, 35)")
+  engine.sendMsg("tell", "sensor", "bob", "temperature(room_1, 35)")
 }
 ```
 
@@ -438,41 +376,52 @@ void on_achieve(const char* sender, const char* receiver, const char* content) {
 }
 
 int main() {
-    panteao_t* engine = panteao_create("127.0.0.1", 44444);
+    panteao_t* engine = panteao_create("127.0.0.1", 0);
     panteao_connect(engine);
 
     panteao_register_performative(engine, "achieve", on_achieve);
-    panteao_send_msg(engine, "tell", "external", "orquestrador", "temperature(room_1, 35)");
-    panteao_loop(engine);
+    panteao_send_msg(engine, "tell", "sensor", "bob", "temperature(room_1, 35)");
+    panteao_wait(engine);
     return 0;
 }
 ```
 
 ### C++
 
-Link the library:
+Download the SDK tarball from GitHub Releases or include the repository in your project.
 
-```bash
-g++ main.cpp -std=c++17 -lpanteao-cpp -o main
+Link the library in your `CMakeLists.txt`:
+
+```cmake
+add_subdirectory(panteao-sdk)
+target_link_libraries(your_app panteao_client_cpp)
 ```
 
 Boilerplate code:
 
 ```cpp
-#include <panteao/client.hpp>
+#include "panteao_client.h"
 #include <iostream>
+#include <vector>
+#include <functional>
 
 int main() {
-    panteao::Panteao engine("127.0.0.1", 44444);
-    engine.connect();
+    panteao::Panteao engine;
+    
+    // Spawns the native binary automatically
+    engine.connect("127.0.0.1", 0, "./project.jcm");
 
-    engine.register_performative("achieve", [&engine](const std::string& sender, const std::string& receiver, const std::string& content) {
-        std::cout << "Performative achieve received: " << content << std::endl;
-        engine.send_msg("tell", "sensor", sender, "ac_status(on)");
+    engine.registerAction("turn_on_ac", [&engine](const std::vector<std::string>& args, std::function<void(bool)> respond) {
+        std::cout << "Action received! Turning on AC." << std::endl;
+        
+        engine.sendMsg("tell", "sensor", "bob", "ac_status(on)");
+
+        respond(true); // Action successful
     });
 
-    engine.send_msg("tell", "external", "orquestrador", "temperature(room_1, 35)");
-    engine.loop();
+    engine.sendMsg("tell", "sensor", "bob", "temperature(room_1, 35)");
+    
+    engine.wait();
     return 0;
 }
 ```
@@ -482,26 +431,29 @@ int main() {
 Add the package:
 
 ```bash
-dotnet add package Panteao.Sdk
+dotnet add package Panteao
 ```
 
 Boilerplate code:
 
 ```csharp
-using Panteao.Sdk;
 using System;
+using Panteao.Sdk;
 
 class Program {
     static void Main() {
-        var engine = new Panteao("127.0.0.1", 44444);
-        engine.Connect();
+        // Spawns the native binary automatically
+        using var engine = new Panteao.Sdk.Panteao("127.0.0.1", 0, "./project.jcm");
 
-        engine.RegisterPerformative("achieve", (sender, receiver, content) => {
-            Console.WriteLine($"Performative achieve received: {content}");
-            engine.SendMsg("tell", "sensor", sender, "ac_status(on)");
+        engine.RegisterAction("turn_on_ac", (args, respond) => {
+            Console.WriteLine("Action received! Turning on AC.");
+            engine.SendMsg("tell", "sensor", "bob", "ac_status(on)");
+            respond(true); // Action successful
         });
 
-        engine.SendMsg("tell", "external", "orquestrador", "temperature(room_1, 35)");
+        engine.SendMsg("tell", "sensor", "bob", "temperature(room_1, 35)");
+        
+        // Block until the process is interrupted
         engine.Wait();
     }
 }
@@ -521,15 +473,15 @@ Boilerplate code:
 import 'package:panteao/panteao.dart';
 
 void main() async {
-  final engine = Panteao(host: '127.0.0.1', port: 44444);
+  final engine = Panteao(host: '127.0.0.1', port: 0);
   await engine.connect();
 
-  engine.registerPerformative('achieve', (sender, receiver, content) {
+  engine.registerAction(\'turn_on_ac\', (sender, receiver, content) {
     print('Performative achieve received: $content');
     engine.sendMsg('tell', 'sensor', sender, 'ac_status(on)');
   });
 
-  engine.sendMsg('tell', 'external', 'orquestrador', 'temperature(room_1, 35)');
+  engine.sendMsg('tell', 'sensor', 'bob', 'temperature(room_1, 35)');
 }
 ```
 
@@ -547,15 +499,15 @@ Boilerplate code:
 <?php
 use Panteao\Panteao;
 
-$engine = new Panteao("127.0.0.1", 44444);
+$engine = new Panteao("127.0.0.1", 0);
 $engine->connect();
 
-$engine->registerPerformative("achieve", function($sender, $receiver, $content) use ($engine) {
+$engine->registerAction("turn_on_ac", function($sender, $receiver, $content) use ($engine) {
     echo "Performative achieve received: " . $content . "\n";
     $engine->sendMsg("tell", "sensor", $sender, "ac_status(on)");
 });
 
-$engine->sendMsg("tell", "external", "orquestrador", "temperature(room_1, 35)");
+$engine->sendMsg("tell", "sensor", "bob", "temperature(room_1, 35)");
 $engine->loop();
 ```
 
@@ -572,7 +524,7 @@ Boilerplate code:
 ```ruby
 require 'panteao'
 
-engine = Panteao::Panteao.new('127.0.0.1', 44444)
+engine = Panteao::Panteao.new('127.0.0.1', 0)
 engine.connect
 
 engine.register_performative('achieve') do |sender, receiver, content|
@@ -580,7 +532,7 @@ engine.register_performative('achieve') do |sender, receiver, content|
   engine.send_msg('tell', 'sensor', sender, 'ac_status(on)')
 end
 
-engine.send_msg('tell', 'external', 'orquestrador', 'temperature(room_1, 35)')
+engine.send_msg('tell', 'sensor', 'bob', 'temperature(room_1, 35)')
 engine.loop
 ```
 
@@ -597,15 +549,15 @@ Boilerplate code:
 ```swift
 import Panteao
 
-let engine = Panteao(host: "127.0.0.1", port: 44444)
+let engine = Panteao(host: "127.0.0.1", port: 0)
 engine.connect()
 
-engine.registerPerformative("achieve") { sender, receiver, content in
+engine.registerAction("turn_on_ac") { sender, receiver, content in
     print("Performative achieve received: \(content)")
     engine.sendMsg("tell", sender: "sensor", receiver: sender, content: "ac_status(on)")
 }
 
-engine.sendMsg("tell", sender: "external", receiver: "orquestrador", content: "temperature(room_1, 35)")
+engine.sendMsg("tell", sender: "sensor", receiver: "bob", content: "temperature(room_1, 35)")
 ```
 
 ### Objective-C
@@ -623,7 +575,7 @@ Boilerplate code:
 
 int main() {
     @autoreleasepool {
-        Panteao *engine = [[Panteao alloc] initWithHost:@"127.0.0.1" port:44444];
+        Panteao *engine = [[Panteao alloc] initWithHost:@"127.0.0.1" port:0];
         [client connect];
 
         [engine registerPerformative:@"achieve" withBlock:^(NSString *sender, NSString *receiver, NSString *content) {
@@ -631,7 +583,7 @@ int main() {
             [engine sendMsg:@"tell" sender:@"sensor" receiver:sender content:@"ac_status(on)"];
         }];
 
-        [engine sendMsg:@"tell" sender:@"external" receiver:@"orquestrador" content:@"temperature(room_1, 35)"];
+        [engine sendMsg:@"tell" sender:@"sensor" receiver:@"bob" content:@"temperature(room_1, 35)"];
     }
     return 0;
 }
@@ -650,15 +602,15 @@ Boilerplate code:
 ```R
 library(panteao)
 
-engine <- Panteao$new(host = "127.0.0.1", port = 44444)
+engine <- Panteao$new(host = "127.0.0.1", port = 0)
 engine$connect()
 
-engine$register_performative("achieve", function(sender, receiver, content) {
+engine$registerAction("turn_on_ac", function(sender, receiver, content) {
   cat("Performative achieve received: ", content, "\n")
   engine$send_msg("tell", "sensor", sender, "ac_status(on)")
 })
 
-engine$send_msg("tell", "external", "orquestrador", "temperature(room_1, 35)")
+engine$send_msg("tell", "sensor", "bob", "temperature(room_1, 35)")
 engine$loop()
 ```
 
@@ -676,7 +628,7 @@ Boilerplate code:
 #!/bin/bash
 source panteao.sh
 
-panteao_connect "127.0.0.1" 44444
+panteao_connect "127.0.0.1" 0
 
 panteao_register_performative "achieve" function_achieve
 function_achieve() {
@@ -687,8 +639,8 @@ function_achieve() {
     panteao_send_msg "tell" "sensor" "$sender" "ac_status(on)"
 }
 
-panteao_send_msg "tell" "external" "orquestrador" "temperature(room_1, 35)"
-panteao_loop
+panteao_send_msg "tell" "sensor" "bob" "temperature(room_1, 35)"
+panteao_wait
 ```
 
 ### Custom Language Integration
@@ -736,7 +688,7 @@ npm install -g .
 Once installed, you can launch the BDI engine with any `.jcm` or `.mas2j` file using the `panteao` command:
 
 ```bash
-panteao test/counter_test.jcm --port 44444
+panteao test/counter_test.jcm --port 0
 ```
 
 The CLI launcher automatically handles classpath discovery, generates temporary MAS2J files for project configurations, and starts either the native binary (if compiled) or falls back to the Java bytecode runner.
@@ -751,10 +703,10 @@ To compile and package the Panteão BDI engine inside an isolated Docker contain
 docker build -t panteao-engine .
 ```
 
-To execute the engine inside a Docker container while exposing the TCP loopback port (e.g. `44444`):
+To execute the engine inside a Docker container while exposing the TCP loopback port (e.g. `0`):
 
 ```bash
-docker run -d --name panteao-bdi -p 44444:44444 panteao-engine
+docker run -d --name panteao-bdi -p 0:0 panteao-engine
 ```
 
 ### How to Run the Test Suite

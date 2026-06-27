@@ -3,7 +3,17 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>Panteao.Client</AssemblyName>
-    <RootNamespace>Panteao.Client</RootNamespace>
+    <AssemblyName>Panteao</AssemblyName>
+    <RootNamespace>Panteao.Sdk</RootNamespace>
+    
+    <!-- NuGet Publishing -->
+    <PackageId>Panteao</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Kkphoenix</Authors>
+    <Description>Official .NET SDK for Panteão BDI Framework.</Description>
+    <PackageProjectUrl>https://github.com/kkphoenixgx/aop-globalization</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/kkphoenixgx/aop-globalization</RepositoryUrl>
+    <PackageTags>bdi;jason;agents;ai;panteao</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 </Project>

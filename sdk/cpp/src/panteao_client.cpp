@@ -41,13 +41,13 @@ static void readLogs(int fd) {
     }
 }
 
-BdiClient::BdiClient() : socketFd(-1), enginePid(-1), running(false), sdkVersion("1.0.0") {}
+Panteao::Panteao() : socketFd(-1), enginePid(-1), running(false), sdkVersion("1.0.0") {}
 
-BdiClient::~BdiClient() {
+Panteao::~Panteao() {
     close();
 }
 
-bool BdiClient::connect(const std::string& host, int port, const std::string& project) {
+bool Panteao::connect(const std::string& host, int port, const std::string& project) {
     int actualPort = port;
     std::string actualHost = host.empty() ? "127.0.0.1" : host;
 
@@ -133,11 +133,11 @@ bool BdiClient::connect(const std::string& host, int port, const std::string& pr
     }
 
     running = true;
-    listenerThread = std::thread(&BdiClient::listenLoop, this);
+    listenerThread = std::thread(&Panteao::listenLoop, this);
     return true;
 }
 
-bool BdiClient::sendMsg(const std::string& performative, const std::string& sender, const std::string& receiver, const std::string& content) {
+bool Panteao::sendMsg(const std::string& performative, const std::string& sender, const std::string& receiver, const std::string& content) {
     std::lock_guard<std::mutex> lock(writeMutex);
     std::ostringstream oss;
     oss << "{\"type\":\"message\",\"performative\":\"" << performative 
@@ -158,7 +158,7 @@ bool BdiClient::sendMsg(const std::string& performative, const std::string& send
     return false;
 }
 
-bool BdiClient::sendPerception(const std::string& action, const std::string& perception) {
+bool Panteao::sendPerception(const std::string& action, const std::string& perception) {
     std::lock_guard<std::mutex> lock(writeMutex);
     std::ostringstream oss;
     oss << "{\"type\":\"perception\",\"action\":\"" << action << "\",\"perception\":\"" << perception << "\"}\n";
@@ -176,11 +176,11 @@ bool BdiClient::sendPerception(const std::string& action, const std::string& per
     return false;
 }
 
-void BdiClient::registerAction(const std::string& actionName, std::function<void(const std::vector<std::string>& args, std::function<void(bool)> respond)> callback) {
+void Panteao::registerAction(const std::string& actionName, std::function<void(const std::vector<std::string>& args, std::function<void(bool)> respond)> callback) {
     handlers[actionName] = callback;
 }
 
-void BdiClient::sendActionResult(const std::string& actionId, bool success) {
+void Panteao::sendActionResult(const std::string& actionId, bool success) {
     std::lock_guard<std::mutex> lock(writeMutex);
     std::ostringstream oss;
     oss << "{\"type\":\"action_result\",\"id\":\"" << actionId << "\",\"success\":" << (success ? "true" : "false") << "}\n";
@@ -196,7 +196,7 @@ void BdiClient::sendActionResult(const std::string& actionId, bool success) {
     }
 }
 
-void BdiClient::close() {
+void Panteao::close() {
     running = false;
     if (socketFd >= 0) {
         ::shutdown(socketFd, SHUT_RDWR);
@@ -215,13 +215,13 @@ void BdiClient::close() {
     if (stderrThread.joinable()) stderrThread.join();
 }
 
-void BdiClient::wait() {
+void Panteao::wait() {
     while (running && listenerThread.joinable()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 }
 
-void BdiClient::downloadEngine() {
+void Panteao::downloadEngine() {
     std::string osName, arch;
 #if defined(_WIN32)
     osName = "win32";
@@ -259,7 +259,7 @@ void BdiClient::downloadEngine() {
     std::cout << "[Panteao] Engine downloaded successfully.\n";
 }
 
-void BdiClient::listenLoop() {
+void Panteao::listenLoop() {
     char buf[4096];
     int total = 0;
 
@@ -330,7 +330,7 @@ static std::string cleanArg(const std::string& arg) {
     return s;
 }
 
-std::pair<std::string, std::vector<std::string>> BdiClient::parseAction(const std::string& actionStr) {
+std::pair<std::string, std::vector<std::string>> Panteao::parseAction(const std::string& actionStr) {
     size_t parenIdx = actionStr.find('(');
     if (parenIdx == std::string::npos) {
         return {actionStr, {}};

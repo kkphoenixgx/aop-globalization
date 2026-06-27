@@ -108,8 +108,20 @@ public class IPCEnvironment extends Environment {
             if ("message".equals(type)) {
                 String sender = json.optString("sender", "external");
                 String receiver = json.optString("receiver");
-                String performative = json.optString("performative", "tell");
-                String content = json.optString("content");
+                
+                // Fallback to 'performative' for backwards compatibility, but prefer 'ilf' as per KQML/Jason specs
+                String performative = json.optString("ilf");
+                if (performative.isEmpty()) {
+                    performative = json.optString("performative", "tell");
+                }
+                
+                String content = json.optString("message");
+                if (content.isEmpty()) {
+                    content = json.optString("content");
+                }
+                
+                String answer = json.optString("answer");
+                String timeoutStr = json.optString("timeout");
 
                 jason.asSemantics.Message msg = new jason.asSemantics.Message(
                     performative,
@@ -117,6 +129,13 @@ public class IPCEnvironment extends Environment {
                     receiver,
                     jason.asSyntax.ASSyntax.parseTerm(content)
                 );
+                
+                // Support optional KQML Jason Message fields
+                if (!answer.isEmpty()) {
+                    msg.setMsgId(answer);
+                }
+                
+                // Although Jason message class doesn't store timeout natively, we keep parsing it as per KQML.
 
                 jason.infra.local.LocalAgArch arch = jason.infra.centralised.RunCentralisedMAS.getRunner().getAg(receiver);
                 if (arch != null) {
