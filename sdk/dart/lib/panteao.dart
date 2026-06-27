@@ -56,7 +56,7 @@ class Panteao {
     try {
       File(tarPath).deleteSync();
       // Move from package folder if it extracts into a subfolder
-      final extractedBin = '$scriptDir/package/$binName';
+      final extractedBin = '$scriptDir/package/bin/$binName';
       if (FileSystemEntity.typeSync(extractedBin) != FileSystemEntityType.notFound) {
         File(extractedBin).renameSync(binPath);
         Directory('$scriptDir/package').deleteSync(recursive: true);
