@@ -188,6 +188,14 @@ jobs:
         run: dotnet nuget push out/*.nupkg --source https://api.nuget.org/v3/index.json --api-key $NUGET_AUTH_TOKEN --skip-duplicate
         continue-on-error: true
 
+      - name: Commit Version Bumps
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add sdk/dart/pubspec.yaml sdk/dart/lib/panteao.dart sdk/js/package.json sdk/ts/package.json pyproject.toml sdk/csharp/Panteao.Client.csproj sdk/python/pyproject.toml src/panteao_client.cpp
+          git commit -m "chore: bump SDK versions to ${{ needs.prepare.outputs.version }}"
+          git push origin HEAD:main
+
       - name: Create GitHub Release and Tag
         uses: softprops/action-gh-release@v2
         with:
