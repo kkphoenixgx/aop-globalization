@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:async';
 
+/// Main entry point for interacting with the Panteão BDI engine.
 class Panteao {
   late Socket _socket;
   final String host;
@@ -10,8 +11,12 @@ class Panteao {
   Process? _process;
   final Map<String, Function(List<String> args, Function(bool success) respond)> _handlers = {};
   bool _running = false;
-  final String sdkVersion = '1.0.0';
+  final String sdkVersion = '1.0.1';
 
+  /// Creates a new Panteao instance.
+  /// [host] is the host address, defaults to 127.0.0.1.
+  /// [port] is the connection port. If 0, an ephemeral port is used.
+  /// [project] is the optional path to the .jcm MAS configuration file.
   Panteao({this.host = '127.0.0.1', this.port = 0, this.project});
 
   static Future<int> getFreePort() async {
@@ -67,6 +72,7 @@ class Panteao {
     return binPath;
   }
 
+  /// Connects to the BDI engine, automatically downloading and spawning it if necessary.
   Future<void> connect() async {
     if (project != null) {
       if (port == 0) {
@@ -195,6 +201,7 @@ class Panteao {
     return s;
   }
 
+  /// Sends a KQML speech act to a specific agent.
   void sendMsg(String performative, String sender, String receiver, String content) {
     var msg = jsonEncode({'type': 'message', 'ilf': performative, 'sender': sender, 'receiver': receiver, 'message': content});
     _socket.write('$msg\n');
@@ -209,6 +216,7 @@ class Panteao {
     _socket.write('$payload\n');
   }
 
+  /// Registers a callback to handle external actions dispatched by the BDI agents.
   void registerAction(String actionName, Function(List<String> args, Function(bool success) respond) callback) {
     _handlers[actionName] = callback;
   }
@@ -222,12 +230,14 @@ class Panteao {
     _socket.write('$payload\n');
   }
 
+  /// Blocks the current execution while the engine is running.
   Future<void> wait() async {
     while (_running) {
       await Future.delayed(const Duration(milliseconds: 500));
     }
   }
 
+  /// Closes the connection and terminates the native engine process.
   void close() {
     _running = false;
     _socket.destroy();

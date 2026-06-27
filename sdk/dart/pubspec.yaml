@@ -1,6 +1,6 @@
 name: panteao
-description: Dart client for Panteao BDI Coprocessor
-version: 1.0.0
+description: Dart client for the Panteao BDI Coprocessor. Integrates multi-agent BDI systems via JSON and Sockets natively in your Dart or Flutter application.
+version: 1.0.1
 environment:
   sdk: '>=3.0.0 <4.0.0'
 repository: https://github.com/kkphoenixgx/aop-globalization
