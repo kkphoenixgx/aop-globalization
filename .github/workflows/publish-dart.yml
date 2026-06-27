@@ -1,0 +1,28 @@
+name: Publish Dart SDK to pub.dev
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: Install dependencies
+        working-directory: sdk/dart
+        run: dart pub get
+
+      - name: Publish to pub.dev
+        working-directory: sdk/dart
+        run: dart pub publish --force
