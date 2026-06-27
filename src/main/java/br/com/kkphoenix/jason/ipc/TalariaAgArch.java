@@ -33,12 +33,12 @@ import org.json.JSONObject;
  */
 public class TalariaAgArch extends AgArch {
 
-    private static final Logger logger = Logger.getLogger(TalariaAgArch.class.getName());
+    private static final Logger logger = Logger.getLogger("Talaria");
 
     @Override
     public void init() throws Exception {
         super.init();
-        logger.info("[Talaria] Gateway agent initialized.");
+        logger.info("Gateway agent initialized.");
     }
 
     /**
@@ -77,7 +77,7 @@ public class TalariaAgArch extends AgArch {
                 env.sendToClient(json);
             }
         } catch (Exception e) {
-            logger.severe("[Talaria] Exception intercepting messages: " + e.getMessage());
+            logger.severe("Exception intercepting messages: " + e.getMessage());
         }
     }
 }

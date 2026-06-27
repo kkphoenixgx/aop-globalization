@@ -10,7 +10,7 @@ import java.util.logging.Logger;
 import org.json.JSONObject;
 
 public class IPCEnvironment extends Environment {
-    private static final Logger logger = Logger.getLogger(IPCEnvironment.class.getName());
+    private static final Logger logger = Logger.getLogger("MAS");
     private static IPCEnvironment instance;
     private ServerSocket serverSocket;
     private Socket clientSocket;

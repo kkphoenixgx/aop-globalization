@@ -14,12 +14,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Launcher {
-    private static final Logger logger = Logger.getLogger(Launcher.class.getName());
+    private static final Logger logger = Logger.getLogger("MAS");
     private static File tempMas2jFile = null;
 
     static {
         System.setProperty("java.awt.headless", "true");
-        System.setProperty("java.util.logging.SimpleFormatter.format", "%5$s%n");
+        System.setProperty("java.util.logging.SimpleFormatter.format", "[%3$s] %5$s%n");
 
         try (java.io.InputStream in = Launcher.class.getResourceAsStream("/logging.properties")) {
             if (in != null) {
