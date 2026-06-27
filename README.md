@@ -129,7 +129,7 @@ To communicate with the BDI engine, applications use the official SDK package fo
 Install the package:
 
 ```bash
-pip install panteao
+pip install panteao-py
 ```
 
 Boilerplate code:

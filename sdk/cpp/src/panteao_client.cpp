@@ -7,10 +7,41 @@
 #include <iostream>
 #include <signal.h>
 #include <sys/wait.h>
+#include <regex>
+#include <cstdlib>
 
 namespace panteao {
 
-BdiClient::BdiClient() : socketFd(-1), enginePid(-1), running(false) {}
+static void readLogs(int fd) {
+    char buf[1024];
+    std::string buffer;
+    std::regex re("^\\[(.*?)\\]\\s(.*)");
+    while (true) {
+        int n = ::read(fd, buf, sizeof(buf) - 1);
+        if (n <= 0) break;
+        buf[n] = '\0';
+        buffer += buf;
+        size_t pos = 0;
+        while ((pos = buffer.find('\n')) != std::string::npos) {
+            std::string line = buffer.substr(0, pos);
+            buffer.erase(0, pos + 1);
+            if (!line.empty() && line.back() == '\r') line.pop_back();
+            if (line.empty()) continue;
+            
+            std::smatch match;
+            if (std::regex_match(line, match, re)) {
+                std::string raw_name = match[1];
+                size_t dot_pos = raw_name.find_last_of('.');
+                std::string name = (dot_pos == std::string::npos) ? raw_name : raw_name.substr(dot_pos + 1);
+                std::cout << "\033[36m[" << name << "]\033[0m " << match[2] << std::endl;
+            } else {
+                std::cout << "\033[36m[MAS]\033[0m " << line << std::endl;
+            }
+        }
+    }
+}
+
+BdiClient::BdiClient() : socketFd(-1), enginePid(-1), running(false), sdkVersion("1.0.0") {}
 
 BdiClient::~BdiClient() {
     close();
@@ -21,6 +52,10 @@ bool BdiClient::connect(const std::string& host, int port, const std::string& pr
     std::string actualHost = host.empty() ? "127.0.0.1" : host;
 
     if (!project.empty()) {
+        if (access("panteao-engine", F_OK) == -1 && access("panteao-engine.exe", F_OK) == -1) {
+            downloadEngine();
+        }
+
         if (actualPort == 0) {
             // Find a free port (simplistic approach for now)
             struct sockaddr_in servAddr;
@@ -39,17 +74,32 @@ bool BdiClient::connect(const std::string& host, int port, const std::string& pr
             if (actualPort == 0) actualPort = 44444; // fallback
         }
 
+        int pipe_out[2], pipe_err[2];
+        pipe(pipe_out);
+        pipe(pipe_err);
+
         enginePid = fork();
         if (enginePid == 0) {
             // Child process
+            dup2(pipe_out[1], STDOUT_FILENO);
+            dup2(pipe_err[1], STDERR_FILENO);
+            ::close(pipe_out[0]); ::close(pipe_out[1]);
+            ::close(pipe_err[0]); ::close(pipe_err[1]);
+
             std::string portStr = std::to_string(actualPort);
-            execlp("panteao-engine", "panteao-engine", project.c_str(), "--port", portStr.c_str(), (char*)NULL);
             execlp("./panteao-engine", "panteao-engine", project.c_str(), "--port", portStr.c_str(), (char*)NULL);
+            execlp("panteao-engine", "panteao-engine", project.c_str(), "--port", portStr.c_str(), (char*)NULL);
             std::cerr << "Failed to start panteao-engine\n";
             _exit(1);
         } else if (enginePid < 0) {
             return false;
         }
+
+        ::close(pipe_out[1]);
+        ::close(pipe_err[1]);
+        stdoutThread = std::thread(readLogs, pipe_out[0]);
+        stderrThread = std::thread(readLogs, pipe_err[0]);
+
         usleep(800000); // 800ms wait
     } else {
         if (actualPort == 0) actualPort = 44444;
@@ -161,6 +211,52 @@ void BdiClient::close() {
         waitpid(enginePid, nullptr, 0);
         enginePid = -1;
     }
+    if (stdoutThread.joinable()) stdoutThread.join();
+    if (stderrThread.joinable()) stderrThread.join();
+}
+
+void BdiClient::wait() {
+    while (running && listenerThread.joinable()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+}
+
+void BdiClient::downloadEngine() {
+    std::string osName, arch;
+#if defined(_WIN32)
+    osName = "win32";
+    arch = "x64"; 
+#elif defined(__APPLE__)
+    osName = "darwin";
+    #if defined(__aarch64__)
+        arch = "arm64";
+    #else
+        arch = "x64";
+    #endif
+#else
+    osName = "linux";
+    #if defined(__aarch64__)
+        arch = "arm64";
+    #else
+        arch = "x64";
+    #endif
+#endif
+
+    std::string pkgName = "panteao-engine-" + osName + "-" + arch;
+    std::string url = "https://registry.npmjs.org/" + pkgName + "/-/" + pkgName + "-" + sdkVersion + ".tgz";
+    std::cout << "[Panteao] Downloading native engine for " << osName << "-" << arch << " (v" << sdkVersion << ")...\n";
+
+#if defined(_WIN32)
+    std::system(("curl -sL " + url + " -o panteao.tgz").c_str());
+    std::system("tar -xf panteao.tgz package/bin/panteao-engine.exe");
+    std::system("move package\\bin\\panteao-engine.exe panteao-engine.exe");
+    std::system("rmdir /S /Q package");
+    std::system("del panteao.tgz");
+#else
+    std::string cmd = "curl -sL " + url + " | tar -xz --strip-components=2 package/bin/panteao-engine";
+    std::system(cmd.c_str());
+#endif
+    std::cout << "[Panteao] Engine downloaded successfully.\n";
 }
 
 void BdiClient::listenLoop() {
