@@ -102,6 +102,7 @@ jobs:
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
 
       - name: Bump TypeScript SDK version
         working-directory: sdk/typescript
@@ -151,6 +152,7 @@ jobs:
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        continue-on-error: true
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
