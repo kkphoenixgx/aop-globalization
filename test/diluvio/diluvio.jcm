@@ -1,3 +1,0 @@
-mas operacao_diluvio {
-    agent orquestrador : orquestrador.asl
-}

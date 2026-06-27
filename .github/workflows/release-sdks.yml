@@ -139,6 +139,17 @@ jobs:
           sed -i "s/sdkVersion = \".*\"/sdkVersion = \"${{ needs.prepare.outputs.version }}\"/" src/BdiClient.cs
           dotnet pack -c Release -o out
 
+      - name: Bump Dart SDK version
+        working-directory: sdk/dart
+        run: |
+          sed -i "s/version: .*/version: ${{ needs.prepare.outputs.version }}/" pubspec.yaml
+          sed -i "s/final String sdkVersion = .*/final String sdkVersion = '${{ needs.prepare.outputs.version }}';/" lib/panteao.dart
+
+      - name: Archive Dart SDK
+        working-directory: sdk/dart
+        run: |
+          tar -czf ../../panteao-dart-${{ needs.prepare.outputs.version }}.tar.gz .
+
       - name: NuGet Login
         uses: NuGet/login@v1
         with:
@@ -159,5 +170,6 @@ jobs:
           generate_release_notes: true
           files: |
             panteao-cpp-${{ needs.prepare.outputs.version }}.tar.gz
+            panteao-dart-${{ needs.prepare.outputs.version }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
