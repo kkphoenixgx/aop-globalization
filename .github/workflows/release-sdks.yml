@@ -1,11 +1,10 @@
 name: Release & Publish SDKs
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
-  workflow_run:
-    workflows: ["Build Engine Binaries"]
-    types:
-      - completed
 
 permissions:
   contents: write
@@ -19,7 +18,7 @@ jobs:
   prepare:
     name: Calculate next version
     runs-on: ubuntu-latest
-    if: "github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'"
+    if: "contains(github.event.head_commit.message, '+version') || github.event_name == 'workflow_dispatch'"
     outputs:
       version: ${{ steps.version.outputs.version }}
 
@@ -52,7 +51,7 @@ jobs:
           echo "Publishing version $VERSION"
 
   publish-sdks:
-    name: Publish JS and TS SDKs
+    name: Publish SDKs
     needs: prepare
     runs-on: ubuntu-latest
 
@@ -187,7 +186,7 @@ jobs:
       - name: NuGet Login
         uses: NuGet/login@v1
         with:
-          owner: ${{ github.repository_owner }}
+          user: ${{ github.repository_owner }}
 
       - name: Publish C# SDK to NuGet
         working-directory: sdk/csharp
