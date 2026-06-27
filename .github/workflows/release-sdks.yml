@@ -55,6 +55,28 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Auto-generate CHANGELOG.md
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          echo "## ${{ needs.prepare.outputs.version }}" > LATEST.md
+          echo "" >> LATEST.md
+          if [ -n "$LAST_TAG" ]; then
+            git log ${LAST_TAG}..HEAD --pretty=format:"- %s" >> LATEST.md
+          else
+            git log -n 10 --pretty=format:"- %s" >> LATEST.md
+          fi
+          echo "" >> LATEST.md
+          
+          # Prepend for Dart (and future SDKs that need it)
+          if [ -f sdk/dart/CHANGELOG.md ]; then
+            cat LATEST.md sdk/dart/CHANGELOG.md > temp_changelog.md
+            mv temp_changelog.md sdk/dart/CHANGELOG.md
+          else
+            cp LATEST.md sdk/dart/CHANGELOG.md
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
