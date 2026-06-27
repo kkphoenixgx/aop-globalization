@@ -198,25 +198,21 @@ class BdiClient extends EventEmitter {
                 }
             );
 
-            this.process.stdout?.on(
-                'data',
-                data => {
-                    console.log(
-                        '\x1b[36m[MAS]\x1b[0m',
-                        data.toString().trim()
-                    );
+            const formatLog = data => {
+                const lines = data.toString().trim().split('\n');
+                for (const line of lines) {
+                    if (!line.trim()) continue;
+                    const match = line.match(/^\[(.*?)\]\s(.*)/);
+                    if (match) {
+                        console.log(`\x1b[36m[${match[1]}]\x1b[0m`, match[2]);
+                    } else {
+                        console.log('\x1b[36m[MAS]\x1b[0m', line);
+                    }
                 }
-            );
+            };
 
-            this.process.stderr?.on(
-                'data',
-                data => {
-                    console.log(
-                        '\x1b[36m[MAS]\x1b[0m',
-                        data.toString().trim()
-                    );
-                }
-            );
+            this.process.stdout?.on('data', formatLog);
+            this.process.stderr?.on('data', formatLog);
 
             await new Promise(resolve =>
                 setTimeout(resolve, 800)

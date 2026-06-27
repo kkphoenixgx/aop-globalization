@@ -50,7 +50,18 @@ class Panteao:
             
             # Spawn the GraalVM engine subprocess
             args = [self.bin_path, self.project, "--port", str(self.port)]
-            self.process = subprocess.Popen(args, stdin=subprocess.DEVNULL)
+            self.process = subprocess.Popen(
+                args, 
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1
+            )
+            
+            threading.Thread(target=self._read_logs, args=(self.process.stdout,), daemon=True).start()
+            threading.Thread(target=self._read_logs, args=(self.process.stderr,), daemon=True).start()
+            
             time.sleep(0.8)
         elif self.port == 0:
             self.port = 44444
@@ -71,6 +82,25 @@ class Panteao:
         self.running = True
         self.thread = threading.Thread(target=self._listen, daemon=True)
         self.thread.start()
+
+    def _read_logs(self, pipe) -> None:
+        import re
+        pattern = re.compile(r"^\[(.*?)\]\s(.*)")
+        try:
+            for line in iter(pipe.readline, ''):
+                if not line:
+                    break
+                line = line.strip()
+                if not line:
+                    continue
+                match = pattern.match(line)
+                if match:
+                    # \033[36m is Cyan ANSI code
+                    print(f"\033[36m[{match.group(1)}]\033[0m {match.group(2)}")
+                else:
+                    print(f"\033[36m[MAS]\033[0m {line}")
+        except Exception:
+            pass
 
     def _listen(self) -> None:
         try:
