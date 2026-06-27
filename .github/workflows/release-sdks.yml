@@ -9,6 +9,7 @@ on:
 permissions:
   contents: write
   id-token: write
+  actions: write
 
 concurrency:
   group: release-sdks-${{ github.ref }}
@@ -200,3 +201,9 @@ jobs:
             panteao-dart-${{ needs.prepare.outputs.version }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trigger Dart Publish Workflow
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run publish-dart.yml --ref v${{ needs.prepare.outputs.version }}
