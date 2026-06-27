@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY package.json ./
 
-RUN npm install panteao-ts typescript @types/node
+RUN npm install typescript @types/node panteao-ts
 
 COPY tsconfig.json ./
 COPY src ./src
@@ -21,6 +21,6 @@ COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/package-lock.json ./package-lock.json
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/src/test.jcm ./test.jcm
+COPY --from=builder /app/src/project.jcm ./project.jcm
 
 CMD ["node", "dist/test.js"]

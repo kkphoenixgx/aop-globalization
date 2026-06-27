@@ -19,7 +19,7 @@ public class Launcher {
 
     static {
         System.setProperty("java.awt.headless", "true");
-        System.setProperty("java.util.logging.SimpleFormatter.format", "[%3$s] %5$s%n");
+        System.setProperty("java.util.logging.SimpleFormatter.format", "[%3$s] %5$s%6$s%n");
 
         try (java.io.InputStream in = Launcher.class.getResourceAsStream("/logging.properties")) {
             if (in != null) {
