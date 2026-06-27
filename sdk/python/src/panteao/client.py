@@ -296,3 +296,14 @@ class Panteao:
                 self.process.wait()
         except Exception:
             pass
+
+    def wait(self) -> None:
+        """
+        Blocks the main thread and keeps the process alive while the connection is active.
+        Gracefully handles KeyboardInterrupt (Ctrl+C) to close the connection and stop the engine.
+        """
+        try:
+            while self.running and self.thread and self.thread.is_alive():
+                self.thread.join(0.5)
+        except KeyboardInterrupt:
+            self.close()
