@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   prepare:
@@ -92,6 +93,23 @@ jobs:
         run: |
           npm install
           npm run build
+
+      - name: Bump Python SDK version
+        working-directory: sdk/python
+        run: |
+          sed -i "s/version = .*/version = \"${{ needs.prepare.outputs.version }}\"/" pyproject.toml
+          sed -i "s/self.version = .*/self.version = \"${{ needs.prepare.outputs.version }}\"/" src/panteao/client.py
+
+      - name: Build Python SDK
+        working-directory: sdk/python
+        run: |
+          python -m pip install build
+          python -m build
+
+      - name: Publish Python SDK to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages_dir: sdk/python/dist/
 
       - name: Publish TypeScript SDK to npm
         working-directory: sdk/typescript

@@ -21,6 +21,8 @@ class Panteao:
         if not os.path.exists(self.bin_path):
             self.bin_path = os.path.join(current_dir, bin_name)
             
+        self.version = "1.0.0" # This will be bumped automatically by CI
+            
         self.auto_reconnect = False if project else auto_reconnect
         self.socket = None
         self.file = None
@@ -40,6 +42,9 @@ class Panteao:
 
     def connect(self) -> None:
         if self.project:
+            if not os.path.exists(self.bin_path):
+                self._download_engine()
+
             if self.port == 0:
                 self.port = self._get_free_port()
             
@@ -159,6 +164,48 @@ class Panteao:
         if s.startswith('"') and s.endswith('"') and len(s) >= 2:
             return s[1:-1]
         return s
+
+    def _download_engine(self) -> None:
+        import urllib.request
+        import tarfile
+        import zipfile
+        import stat
+        
+        system = platform.system().lower()
+        machine = platform.machine().lower()
+        
+        if system == "windows":
+            os_name = "win32"
+        elif system == "darwin":
+            os_name = "darwin"
+        else:
+            os_name = "linux"
+            
+        arch = "arm64" if "arm" in machine or "aarch64" in machine else "x64"
+        pkg_name = f"panteao-engine-{os_name}-{arch}"
+        
+        # We download the published NPM tarball from the registry directly to extract the binary
+        url = f"https://registry.npmjs.org/{pkg_name}/-/{pkg_name}-{self.version}.tgz"
+        
+        print(f"[Panteao] Downloading native engine for {os_name}-{arch} (v{self.version})...")
+        try:
+            tar_path = self.bin_path + ".tgz"
+            urllib.request.urlretrieve(url, tar_path)
+            
+            with tarfile.open(tar_path, "r:gz") as tar:
+                for member in tar.getmembers():
+                    if member.name.endswith("panteao-engine") or member.name.endswith("panteao-engine.exe"):
+                        member.name = os.path.basename(member.name)
+                        tar.extract(member, path=os.path.dirname(self.bin_path))
+                        break
+            
+            os.remove(tar_path)
+            if system != "windows":
+                os.chmod(self.bin_path, os.stat(self.bin_path).st_mode | stat.S_IEXEC)
+                
+            print("[Panteao] Engine downloaded successfully.")
+        except Exception as e:
+            raise RuntimeError(f"Failed to download Panteao engine from {url}: {e}")
 
 
     def send_perception(self, action: str, perception: str) -> None:
