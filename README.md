@@ -65,11 +65,11 @@ Panteão provides native support for the Moise organizational model by including
     .print("Commiting to goal: ", Goal).
 ```
 
-## Speech Acts and Performatives
+## Speech Acts and ILF
 
-Panteao supports the full range of KQML-inspired speech acts and performatives native to the Jason interpreter. This enables sophisticated communication between the engine, external application clients, and other agents. When a message is sent or received, the SDK routes the speech act directly to registered handlers or event listeners.
+Panteao supports the full range of KQML-inspired speech acts and illocutionary forces (ILF) native to the Jason interpreter. This enables sophisticated communication between the engine, external application clients, and other agents. When a message is sent or received, the SDK routes the speech act directly to registered handlers or event listeners.
 
-The supported performatives are:
+The supported ILFs are:
 
 * **tell**: The sender intends the receiver to believe that the content is true.
 * **untell**: The sender intends the receiver to drop the belief that the content is true.
@@ -172,8 +172,8 @@ func main() {
 	engine := panteao.New("127.0.0.1:0")
 	engine.Connect()
 
-	engine.RegisterPerformative("achieve", func(sender, receiver, content string) {
-		println("Performative achieve received:", content)
+	engine.registerAction("turn_on_ac", func(sender, receiver, content string) {
+		print("Action received! Turning on AC.");
 		engine.SendMsg("tell", "sensor", sender, "ac_status(on)")
 	})
 
@@ -263,7 +263,7 @@ fn main() {
     engine.connect().unwrap();
 
     engine.registerAction("turn_on_ac", |sender, receiver, content| {
-        println!("Performative achieve received: {}", content);
+        print("Action received! Turning on AC.");
         engine.send_msg("tell", "sensor", sender, "ac_status(on)").unwrap();
     });
 
@@ -295,7 +295,7 @@ public class Main {
         engine.connect();
 
         engine.registerAction("turn_on_ac", (sender, receiver, content) -> {
-            System.out.println("Performative achieve received: " + content);
+            System.out.print("Action received! Turning on AC.");
             engine.sendMsg("tell", "sensor", sender, "ac_status(on)");
         });
 
@@ -322,7 +322,7 @@ fun main() {
     engine.connect()
 
     engine.registerAction("turn_on_ac") { sender, receiver, content ->
-        println("Performative achieve received: $content")
+        print("Action received! Turning on AC.");
         engine.sendMsg("tell", "sensor", sender, "ac_status(on)")
     }
 
@@ -348,7 +348,7 @@ object Main extends App {
   engine.connect()
 
   engine.registerAction("turn_on_ac", (sender, receiver, content) => {
-    println(s"Performative achieve received: $content")
+    print("Action received! Turning on AC.");
     engine.sendMsg("tell", "sensor", sender, "ac_status(on)")
   })
 
@@ -370,8 +370,8 @@ Boilerplate code:
 #include <panteao.h>
 #include <stdio.h>
 
-void on_achieve(const char* sender, const char* receiver, const char* content) {
-    printf("Performative achieve received: %s\n", content);
+void turn_on_ac(const char* sender, const char* receiver, const char* content) {
+    print("Action received! Turning on AC.");
     panteao_send_msg(engine, "tell", "sensor", sender, "ac_status(on)");
 }
 
@@ -379,7 +379,7 @@ int main() {
     panteao_t* engine = panteao_create("127.0.0.1", 0);
     panteao_connect(engine);
 
-    panteao_register_performative(engine, "achieve", on_achieve);
+    panteao_registerAction(engine, "turn_on_ac", turn_on_ac);
     panteao_send_msg(engine, "tell", "sensor", "bob", "temperature(room_1, 35)");
     panteao_wait(engine);
     return 0;
@@ -477,7 +477,7 @@ void main() async {
   await engine.connect();
 
   engine.registerAction(\'turn_on_ac\', (sender, receiver, content) {
-    print('Performative achieve received: $content');
+    print("Action received! Turning on AC.");
     engine.sendMsg('tell', 'sensor', sender, 'ac_status(on)');
   });
 
@@ -503,7 +503,7 @@ $engine = new Panteao("127.0.0.1", 0);
 $engine->connect();
 
 $engine->registerAction("turn_on_ac", function($sender, $receiver, $content) use ($engine) {
-    echo "Performative achieve received: " . $content . "\n";
+    echo "Action received! Turning on AC.";
     $engine->sendMsg("tell", "sensor", $sender, "ac_status(on)");
 });
 
@@ -527,8 +527,8 @@ require 'panteao'
 engine = Panteao::Panteao.new('127.0.0.1', 0)
 engine.connect
 
-engine.register_performative('achieve') do |sender, receiver, content|
-  puts "Performative achieve received: #{content}"
+engine.registerAction("turn_on_ac") do |sender, receiver, content|
+  puts "Action received! Turning on AC.";
   engine.send_msg('tell', 'sensor', sender, 'ac_status(on)')
 end
 
@@ -553,7 +553,7 @@ let engine = Panteao(host: "127.0.0.1", port: 0)
 engine.connect()
 
 engine.registerAction("turn_on_ac") { sender, receiver, content in
-    print("Performative achieve received: \(content)")
+    print("Action received! Turning on AC.");
     engine.sendMsg("tell", sender: "sensor", receiver: sender, content: "ac_status(on)")
 }
 
@@ -578,8 +578,8 @@ int main() {
         Panteao *engine = [[Panteao alloc] initWithHost:@"127.0.0.1" port:0];
         [client connect];
 
-        [engine registerPerformative:@"achieve" withBlock:^(NSString *sender, NSString *receiver, NSString *content) {
-            NSLog(@"Performative achieve received: %@", content);
+        [engine registerAction:@"turn_on_ac" withBlock:^(NSString *sender, NSString *receiver, NSString *content) {
+            NSLog(@"Action received! Turning on AC.");
             [engine sendMsg:@"tell" sender:@"sensor" receiver:sender content:@"ac_status(on)"];
         }];
 
@@ -606,7 +606,7 @@ engine <- Panteao$new(host = "127.0.0.1", port = 0)
 engine$connect()
 
 engine$registerAction("turn_on_ac", function(sender, receiver, content) {
-  cat("Performative achieve received: ", content, "\n")
+  cat("Action received! Turning on AC.");
   engine$send_msg("tell", "sensor", sender, "ac_status(on)")
 })
 
@@ -630,12 +630,12 @@ source panteao.sh
 
 panteao_connect "127.0.0.1" 0
 
-panteao_register_performative "achieve" function_achieve
-function_achieve() {
+panteao_registerAction "turn_on_ac" turn_on_ac
+turn_on_ac() {
     local sender="$1"
     local receiver="$2"
     local content="$3"
-    echo "Performative achieve received: $content"
+    echo "Action received! Turning on AC.";
     panteao_send_msg "tell" "sensor" "$sender" "ac_status(on)"
 }
 
