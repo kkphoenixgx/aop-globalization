@@ -89,6 +89,11 @@ jobs:
           distribution: 'graalvm'
           native-image-job-reports: 'true'
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: wrapper
+
       - name: Build native binary
         run: ./gradlew copyNativeEngine
         shell: bash
