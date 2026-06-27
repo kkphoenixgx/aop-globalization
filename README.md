@@ -473,15 +473,16 @@ Boilerplate code:
 import 'package:panteao/panteao.dart';
 
 void main() async {
-  final engine = Panteao(host: '127.0.0.1', port: 0);
+  final engine = Panteao(host: '127.0.0.1', port: 0, project: './project.jcm');
   await engine.connect();
 
-  engine.registerAction(\'turn_on_ac\', (sender, receiver, content) {
+  engine.registerAction('turn_on_ac', (args, respond) {
     print("Action received! Turning on AC.");
-    engine.sendMsg('tell', 'sensor', sender, 'ac_status(on)');
+    engine.sendMsg('tell', 'sensor', 'bob', 'ac_status(on)');
+    respond(true);
   });
 
-  engine.sendMsg('tell', 'sensor', 'bob', 'temperature(room_1, 35)');
+  await engine.wait();
 }
 ```
 
