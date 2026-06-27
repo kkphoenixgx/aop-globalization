@@ -102,7 +102,6 @@ jobs:
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        continue-on-error: true
 
       - name: Bump TypeScript SDK version
         working-directory: sdk/typescript
@@ -152,7 +151,6 @@ jobs:
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        continue-on-error: true
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -186,7 +184,7 @@ jobs:
 
       - name: Publish C# SDK to NuGet
         working-directory: sdk/csharp
-        run: dotnet nuget push out/*.nupkg --source https://api.nuget.org/v3/index.json --api-key ${{ env.NUGET_AUTH_TOKEN }} --skip-duplicate
+        run: dotnet nuget push out/*.nupkg --source https://api.nuget.org/v3/index.json --api-key $NUGET_AUTH_TOKEN --skip-duplicate
         continue-on-error: true
 
       - name: Create GitHub Release and Tag
