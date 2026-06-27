@@ -1,0 +1,14 @@
+{
+  "configVersion": 2,
+  "packages": [
+    {
+      "name": "panteao",
+      "rootUri": "../",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
+    }
+  ],
+  "generator": "pub",
+  "generatorVersion": "3.12.2",
+  "pubCache": "file:///root/.pub-cache"
+}
