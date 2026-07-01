@@ -1,5 +1,5 @@
 {
-    "name": "panteao/client",
+    "name": "kkphoenix/panteao",
     "description": "PHP client SDK for Panteao BDI Coprocessor",
     "autoload": {
         "psr-4": {
