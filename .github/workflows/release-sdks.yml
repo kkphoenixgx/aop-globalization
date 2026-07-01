@@ -160,10 +160,53 @@ jobs:
           sed -i 's/"version": ".*"/"version": "${{ needs.prepare.outputs.version }}"/' composer.json
           sed -i "s/const VERSION = '.*'/const VERSION = '${{ needs.prepare.outputs.version }}'/" sdk/php/src/BdiClient.php
 
+      - name: Bump Swift SDK version
+        run: |
+          sed -i "s/private static let version = \".*\"/private static let version = \"${{ needs.prepare.outputs.version }}\"/" sdk/swift/Sources/PanteaoClient/BdiClient.swift
+
+      - name: Bump Java SDK version
+        working-directory: sdk/java
+        run: |
+          sed -i "s/version = '.*'/version = '${{ needs.prepare.outputs.version }}'/" build.gradle
+          sed -i "s/private static final String VERSION = \".*\";/private static final String VERSION = \"${{ needs.prepare.outputs.version }}\";/" src/main/java/io/panteao/BdiClient.java
+
+      - name: Bump Kotlin SDK version
+        working-directory: sdk/kotlin
+        run: |
+          sed -i "s/version = \".*\"/version = \"${{ needs.prepare.outputs.version }}\"/" build.gradle.kts
+          sed -i "s/private const val VERSION = \".*\"/private const val VERSION = \"${{ needs.prepare.outputs.version }}\"/" src/main/kotlin/io/panteao/BdiClient.kt
+
+      - name: Bump Scala SDK version
+        working-directory: sdk/scala
+        run: |
+          sed -i "s/version := \".*\"/version := \"${{ needs.prepare.outputs.version }}\"/" build.sbt
+          sed -i "s/val VERSION = \".*\"/val VERSION = \"${{ needs.prepare.outputs.version }}\"/" src/main/scala/io/panteao/BdiClient.scala
+
+      - name: Bump R SDK version
+        working-directory: sdk/r
+        run: |
+          sed -i "s/Version: .*/Version: ${{ needs.prepare.outputs.version }}/" DESCRIPTION
+          sed -i "s/VERSION <- \".*\"/VERSION <- \"${{ needs.prepare.outputs.version }}\"/" R/client.R
+
+      - name: Bump Objective-C SDK version
+        working-directory: sdk/objc
+        run: |
+          sed -i "s/static NSString \*VERSION = @\".*\";/static NSString \*VERSION = @\"${{ needs.prepare.outputs.version }}\";/" src/BdiClient.m
+
       - name: Archive C++ SDK
         working-directory: sdk/cpp
         run: |
           tar -czf ../../panteao-cpp-${{ needs.prepare.outputs.version }}.tar.gz .
+
+      - name: Archive C SDK
+        working-directory: sdk/c
+        run: |
+          tar -czf ../../panteao-c-${{ needs.prepare.outputs.version }}.tar.gz .
+
+      - name: Archive Shell SDK
+        working-directory: sdk/shell
+        run: |
+          tar -czf ../../panteao-shell-${{ needs.prepare.outputs.version }}.tar.gz .
 
       - name: Build Python SDK
         working-directory: sdk/python
@@ -239,6 +282,20 @@ jobs:
           gem push panteao-client-${{ needs.prepare.outputs.version }}.gem
         continue-on-error: true
 
+      - name: Publish Java SDK
+        working-directory: sdk/java
+        env:
+          MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          ./gradlew publishToMavenLocal
+          cd ~/.m2/repository/com/kkphoenix/panteao/${{ needs.prepare.outputs.version }}
+          zip -r panteao-bundle.zip .
+          curl -u "$MAVEN_USERNAME:$MAVEN_PASSWORD" -X POST "https://central.sonatype.com/api/v1/publisher/upload?publishingType=AUTOMATIC" -H "Content-Type: multipart/form-data" -F "bundle=@panteao-bundle.zip"
+        continue-on-error: true
+
       - name: Commit Version Bumps
         run: |
           git config --global user.name "github-actions[bot]"
@@ -260,6 +317,8 @@ jobs:
           generate_release_notes: true
           files: |
             panteao-cpp-${{ needs.prepare.outputs.version }}.tar.gz
+            panteao-c-${{ needs.prepare.outputs.version }}.tar.gz
+            panteao-shell-${{ needs.prepare.outputs.version }}.tar.gz
             panteao-dart-${{ needs.prepare.outputs.version }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

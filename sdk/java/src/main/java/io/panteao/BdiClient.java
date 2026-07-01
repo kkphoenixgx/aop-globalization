@@ -15,6 +15,84 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class BdiClient implements AutoCloseable {
+    private static final String VERSION = "1.1.16";
+
+    private static void downloadEngine(String binPath) throws Exception {
+        boolean isWin = System.getProperty("os.name").toLowerCase().contains("win");
+        boolean isMac = System.getProperty("os.name").toLowerCase().contains("mac");
+        String osName = isWin ? "win32" : (isMac ? "darwin" : "linux");
+        
+        String arch = System.getProperty("os.arch").toLowerCase();
+        String archStr = (arch.contains("arm") || arch.contains("aarch64")) ? "arm64" : "x64";
+        
+        String pkgName = "panteao-engine-" + osName + "-" + archStr;
+        String urlStr = "https://registry.npmjs.org/" + pkgName + "/-/" + pkgName + "-" + VERSION + ".tgz";
+        
+        System.out.println("\033[36m[Panteao]\033[0m Downloading native engine for " + osName + "-" + archStr + " (v" + VERSION + ")...");
+        
+        java.io.File tmpDir = new java.io.File(System.getProperty("java.io.tmpdir"));
+        java.io.File tarFile = new java.io.File(tmpDir, "engine-" + java.util.UUID.randomUUID().toString() + ".tgz");
+        
+        ProcessBuilder curlPb = new ProcessBuilder(isWin ? "C:\\Windows\\System32\\curl.exe" : "/usr/bin/curl", "-sL", "-o", tarFile.getAbsolutePath(), urlStr);
+        curlPb.start().waitFor();
+        
+        java.io.File extractDir = new java.io.File(tmpDir, "extract-" + java.util.UUID.randomUUID().toString());
+        extractDir.mkdirs();
+        
+        ProcessBuilder tarPb = new ProcessBuilder(isWin ? "C:\\Windows\\System32\\tar.exe" : "/usr/bin/tar", "-xzf", tarFile.getAbsolutePath(), "-C", extractDir.getAbsolutePath());
+        tarPb.start().waitFor();
+        
+        java.nio.file.Path sourcePath = null;
+        try (java.util.stream.Stream<java.nio.file.Path> stream = java.nio.file.Files.walk(extractDir.toPath())) {
+            sourcePath = stream.filter(p -> p.getFileName().toString().equals(isWin ? "panteao-engine.exe" : "panteao-engine")).findFirst().orElse(null);
+        }
+        
+        if (sourcePath != null) {
+            java.io.File target = new java.io.File(binPath);
+            target.getParentFile().mkdirs();
+            java.nio.file.Files.move(sourcePath, target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            if (!isWin) {
+                target.setExecutable(true);
+            }
+        }
+        
+        tarFile.delete();
+        deleteDirectory(extractDir);
+    }
+    
+    private static void deleteDirectory(java.io.File directoryToBeDeleted) {
+        java.io.File[] allContents = directoryToBeDeleted.listFiles();
+        if (allContents != null) {
+            for (java.io.File file : allContents) {
+                deleteDirectory(file);
+            }
+        }
+        directoryToBeDeleted.delete();
+    }
+
+    private static void readLogs(java.io.InputStream is) {
+        Thread t = new Thread(() -> {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    line = line.trim();
+                    if (line.isEmpty()) continue;
+                    if (line.startsWith("[") && line.contains("]")) {
+                        int end = line.indexOf("]");
+                        String name = line.substring(1, end);
+                        String[] parts = name.split("\\.");
+                        String shortName = parts[parts.length - 1];
+                        System.out.println("\033[36m[" + shortName + "]\033[0m " + line.substring(end + 1).trim());
+                    } else {
+                        System.out.println("\033[36m[MAS]\033[0m " + line);
+                    }
+                }
+            } catch (Exception e) {}
+        });
+        t.setDaemon(true);
+        t.start();
+    }
+
 
     @FunctionalInterface
     public interface ActionHandler {
@@ -59,10 +137,19 @@ public class BdiClient implements AutoCloseable {
                 port = getFreePort();
             }
             String bin = findBinary();
+            if (bin.equals("panteao-engine") || bin.equals("panteao-engine.exe")) {
+                boolean isWin = System.getProperty("os.name").toLowerCase().contains("win");
+                bin = System.getProperty("user.dir") + "/" + (isWin ? "panteao-engine.exe" : "panteao-engine");
+                if (!new java.io.File(bin).exists()) {
+                    downloadEngine(bin);
+                }
+            }
             ProcessBuilder pb = new ProcessBuilder(bin, project, "--port", String.valueOf(port));
-            pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
-            pb.redirectError(ProcessBuilder.Redirect.DISCARD);
+            pb.redirectOutput(ProcessBuilder.Redirect.PIPE);
+            pb.redirectError(ProcessBuilder.Redirect.PIPE);
             this.engineProcess = pb.start();
+            readLogs(this.engineProcess.getInputStream());
+            readLogs(this.engineProcess.getErrorStream());
             Thread.sleep(800);
         } else {
             this.engineProcess = null;

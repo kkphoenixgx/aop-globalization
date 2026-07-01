@@ -19,6 +19,86 @@ class BdiClient(host: String, port: Int, project: String? = null) : Closeable {
     private var engineProcess: Process? = null
 
     companion object {
+        private const val VERSION = "1.1.16"
+
+        private fun downloadEngine(binPath: String) {
+            val isWin = System.getProperty("os.name").lowercase().contains("win")
+            val isMac = System.getProperty("os.name").lowercase().contains("mac")
+            val osName = if (isWin) "win32" else if (isMac) "darwin" else "linux"
+            
+            val arch = System.getProperty("os.arch").lowercase()
+            val archStr = if (arch.contains("arm") || arch.contains("aarch64")) "arm64" else "x64"
+            
+            val pkgName = "panteao-engine-$osName-$archStr"
+            val urlStr = "https://registry.npmjs.org/$pkgName/-/$pkgName-$VERSION.tgz"
+            
+            println("\u001B[36m[Panteao]\u001B[0m Downloading native engine for $osName-$archStr (v$VERSION)...")
+            
+            val tmpDir = java.io.File(System.getProperty("java.io.tmpdir"))
+            val tarFile = java.io.File(tmpDir, "engine-${java.util.UUID.randomUUID()}.tgz")
+            
+            val curlPb = ProcessBuilder(if (isWin) "C:\\Windows\\System32\\curl.exe" else "/usr/bin/curl", "-sL", "-o", tarFile.absolutePath, urlStr)
+            curlPb.start().waitFor()
+            
+            val extractDir = java.io.File(tmpDir, "extract-${java.util.UUID.randomUUID()}")
+            extractDir.mkdirs()
+            
+            val tarPb = ProcessBuilder(if (isWin) "C:\\Windows\\System32\\tar.exe" else "/usr/bin/tar", "-xzf", tarFile.absolutePath, "-C", extractDir.absolutePath)
+            tarPb.start().waitFor()
+            
+            var sourcePath: java.nio.file.Path? = null
+            java.nio.file.Files.walk(extractDir.toPath()).use { stream ->
+                sourcePath = stream.filter { p -> p.fileName.toString() == (if (isWin) "panteao-engine.exe" else "panteao-engine") }.findFirst().orElse(null)
+            }
+            
+            if (sourcePath != null) {
+                val target = java.io.File(binPath)
+                target.parentFile?.mkdirs()
+                java.nio.file.Files.move(sourcePath, target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                if (!isWin) {
+                    target.setExecutable(true)
+                }
+            }
+            
+            tarFile.delete()
+            deleteDirectory(extractDir)
+        }
+        
+        private fun deleteDirectory(directoryToBeDeleted: java.io.File) {
+            val allContents = directoryToBeDeleted.listFiles()
+            if (allContents != null) {
+                for (file in allContents) {
+                    deleteDirectory(file)
+                }
+            }
+            directoryToBeDeleted.delete()
+        }
+
+        private fun readLogs(inputStream: java.io.InputStream) {
+            val t = Thread {
+                try {
+                    BufferedReader(InputStreamReader(inputStream, StandardCharsets.UTF_8)).use { reader ->
+                        var line: String?
+                        while (reader.readLine().also { line = it } != null) {
+                            val l = line!!.trim()
+                            if (l.isEmpty()) continue
+                            if (l.startsWith("[") && l.contains("]")) {
+                                val end = l.indexOf("]")
+                                val name = l.substring(1, end)
+                                val parts = name.split("\\.".toRegex())
+                                val shortName = parts.last()
+                                println("\u001B[36m[$shortName]\u001B[0m ${l.substring(end + 1).trim()}")
+                            } else {
+                                println("\u001B[36m[MAS]\u001B[0m $l")
+                            }
+                        }
+                    }
+                } catch (e: Exception) {}
+            }
+            t.isDaemon = true
+            t.start()
+        }
+
         private fun getFreePort(): Int {
             java.net.ServerSocket(0).use { return it.localPort }
         }
@@ -44,11 +124,22 @@ class BdiClient(host: String, port: Int, project: String? = null) : Closeable {
             if (actualPort == 0) {
                 actualPort = getFreePort()
             }
-            val bin = findBinary()
+            var bin = findBinary()
+            if (bin == "panteao-engine" || bin == "panteao-engine.exe") {
+                val isWin = System.getProperty("os.name").lowercase().contains("win")
+                bin = System.getProperty("user.dir") + "/" + (if (isWin) "panteao-engine.exe" else "panteao-engine")
+                if (!java.io.File(bin).exists()) {
+                    downloadEngine(bin)
+                }
+            }
             val pb = ProcessBuilder(bin, project, "--port", actualPort.toString())
-            pb.redirectOutput(ProcessBuilder.Redirect.DISCARD)
-            pb.redirectError(ProcessBuilder.Redirect.DISCARD)
+            pb.redirectOutput(ProcessBuilder.Redirect.PIPE)
+            pb.redirectError(ProcessBuilder.Redirect.PIPE)
             engineProcess = pb.start()
+            engineProcess?.let {
+                readLogs(it.inputStream)
+                readLogs(it.errorStream)
+            }
             Thread.sleep(800)
         } else {
             engineProcess = null

@@ -35,6 +35,66 @@ static int get_free_port() {
     return ntohs(addr.sin_port);
 }
 
+static NSString *VERSION = @"1.1.16";
+
+static void download_engine(char *bin_path) {
+    NSString *osName = @"darwin";
+#if TARGET_OS_IPHONE || TARGET_IPHONE_SIMULATOR
+    osName = @"ios";
+#elif TARGET_OS_MAC
+    osName = @"darwin";
+#elif defined(__linux__)
+    osName = @"linux";
+#endif
+    NSString *archStr = @"x64";
+#if defined(__arm64__) || defined(__aarch64__)
+    archStr = @"arm64";
+#endif
+    NSString *pkgName = [NSString stringWithFormat:@"panteao-engine-%@-%@", osName, archStr];
+    NSString *urlStr = [NSString stringWithFormat:@"https://registry.npmjs.org/%@/-/%@-%@.tgz", pkgName, pkgName, VERSION];
+    
+    printf("\033[36m[Panteao]\033[0m Downloading native engine for %s-%s (v%s)...\n", [osName UTF8String], [archStr UTF8String], [VERSION UTF8String]);
+    
+    NSString *tmpDir = NSTemporaryDirectory();
+    NSString *tarFile = [tmpDir stringByAppendingPathComponent:[NSString stringWithFormat:@"engine-%d.tgz", rand()]];
+    
+    NSTask *curlTask = [[NSTask alloc] init];
+    [curlTask setLaunchPath:@"/usr/bin/curl"];
+    [curlTask setArguments:@[@"-sL", @"-o", tarFile, urlStr]];
+    [curlTask launch];
+    [curlTask waitUntilExit];
+    
+    NSString *extractDir = [tmpDir stringByAppendingPathComponent:[NSString stringWithFormat:@"extract-%d", rand()]];
+    [[NSFileManager defaultManager] createDirectoryAtPath:extractDir withIntermediateDirectories:YES attributes:nil error:nil];
+    
+    NSTask *tarTask = [[NSTask alloc] init];
+    [tarTask setLaunchPath:@"/usr/bin/tar"];
+    [tarTask setArguments:@[@"-xzf", tarFile, @"-C", extractDir]];
+    [tarTask launch];
+    [tarTask waitUntilExit];
+    
+    NSDirectoryEnumerator *enumerator = [[NSFileManager defaultManager] enumeratorAtPath:extractDir];
+    NSString *file;
+    NSString *sourcePath = nil;
+    while ((file = [enumerator nextObject])) {
+        if ([[file lastPathComponent] isEqualToString:@"panteao-engine"]) {
+            sourcePath = [extractDir stringByAppendingPathComponent:file];
+            break;
+        }
+    }
+    
+    if (sourcePath) {
+        NSString *dest = [NSString stringWithUTF8String:bin_path];
+        [[NSFileManager defaultManager] createDirectoryAtPath:[dest stringByDeletingLastPathComponent] withIntermediateDirectories:YES attributes:nil error:nil];
+        [[NSFileManager defaultManager] removeItemAtPath:dest error:nil];
+        [[NSFileManager defaultManager] moveItemAtPath:sourcePath toPath:dest error:nil];
+        chmod([dest UTF8String], 0755);
+    }
+    
+    [[NSFileManager defaultManager] removeItemAtPath:tarFile error:nil];
+    [[NSFileManager defaultManager] removeItemAtPath:extractDir error:nil];
+}
+
 static void find_binary(char *out_path, size_t max_len) {
     NSString *bundlePath = [[NSBundle mainBundle] resourcePath];
     if (bundlePath) {
@@ -100,21 +160,66 @@ static void find_binary(char *out_path, size_t max_len) {
         }
         char bin_path[1024];
         find_binary(bin_path, sizeof(bin_path));
+        if (strcmp(bin_path, "panteao-engine") == 0) {
+            NSString *cwd = [[NSFileManager defaultManager] currentDirectoryPath];
+            NSString *p = [cwd stringByAppendingPathComponent:@"panteao-engine"];
+            snprintf(bin_path, sizeof(bin_path), "%s", [p UTF8String]);
+            if (![[NSFileManager defaultManager] fileExistsAtPath:p]) {
+                download_engine(bin_path);
+            }
+        }
 
+        int pipe_out[2], pipe_err[2];
+        pipe(pipe_out);
+        pipe(pipe_err);
+        
         int pid = fork();
         if (pid == 0) {
             char port_str[16];
             snprintf(port_str, sizeof(port_str), "%d", port);
             
-            int dev_null = open("/dev/null", O_RDWR);
-            dup2(dev_null, 1);
-            dup2(dev_null, 2);
-            close(dev_null);
+            close(pipe_out[0]);
+            close(pipe_err[0]);
+            dup2(pipe_out[1], STDOUT_FILENO);
+            dup2(pipe_err[1], STDERR_FILENO);
+            close(pipe_out[1]);
+            close(pipe_err[1]);
             
             execl(bin_path, bin_path, [project UTF8String], "--port", port_str, (char *)NULL);
             exit(1);
         } else if (pid > 0) {
             enginePid = pid;
+            close(pipe_out[1]);
+            close(pipe_err[1]);
+            
+            void (^readLogs)(int) = ^(int fd) {
+                dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                    FILE *fp = fdopen(fd, "r");
+                    char line[4096];
+                    while (fgets(line, sizeof(line), fp)) {
+                        NSString *str = [[NSString alloc] initWithCString:line encoding:NSUTF8StringEncoding];
+                        str = [str stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+                        if (str.length > 0) {
+                            if ([str hasPrefix:@"["] && [str containsString:@"]"]) {
+                                NSRange end = [str rangeOfString:@"]"];
+                                NSString *name = [str substringWithRange:NSMakeRange(1, end.location - 1)];
+                                NSArray *parts = [name componentsSeparatedByString:@"."];
+                                NSString *shortName = [parts lastObject];
+                                printf("[36m[%s][0m %s
+", [shortName UTF8String], [[str substringFromIndex:end.location + 1] UTF8String]);
+                            } else {
+                                printf("[36m[MAS][0m %s
+", [str UTF8String]);
+                            }
+                        }
+                    }
+                    fclose(fp);
+                });
+            };
+            
+            readLogs(pipe_out[0]);
+            readLogs(pipe_err[0]);
+            
             usleep(800000);
         } else {
             return NO;

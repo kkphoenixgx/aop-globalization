@@ -10,6 +10,47 @@ BdiClient <- function(host = "127.0.0.1", port = 0, project = NULL) {
     })
   }
 
+  VERSION <- "1.1.16"
+
+  downloadEngine <- function(binPath) {
+    is_win <- .Platform$OS.type == "windows"
+    is_mac <- Sys.info()["sysname"] == "Darwin"
+    osName <- if (is_win) "win32" else if (is_mac) "darwin" else "linux"
+    arch <- tolower(Sys.info()["machine"])
+    archStr <- if (grepl("arm|aarch64", arch)) "arm64" else "x64"
+    pkgName <- paste0("panteao-engine-", osName, "-", archStr)
+    urlStr <- paste0("https://registry.npmjs.org/", pkgName, "/-/", pkgName, "-", VERSION, ".tgz")
+    
+    cat(sprintf("\033[36m[Panteao]\033[0m Downloading native engine for %s-%s (v%s)...\n", osName, archStr, VERSION))
+    
+    tmpDir <- tempdir()
+    tarFile <- file.path(tmpDir, paste0("engine-", sample(1:1000000, 1), ".tgz"))
+    
+    curl_bin <- if (is_win) "C:\\Windows\\System32\\curl.exe" else "/usr/bin/curl"
+    system2(curl_bin, args = c("-sL", "-o", tarFile, urlStr))
+    
+    extractDir <- file.path(tmpDir, paste0("extract-", sample(1:1000000, 1)))
+    dir.create(extractDir, showWarnings = FALSE)
+    
+    tar_bin <- if (is_win) "C:\\Windows\\System32\\tar.exe" else "/usr/bin/tar"
+    system2(tar_bin, args = c("-xzf", tarFile, "-C", extractDir))
+    
+    extracted_files <- list.files(extractDir, recursive = TRUE, full.names = TRUE)
+    target_name <- if (is_win) "panteao-engine.exe" else "panteao-engine"
+    sourcePath <- extracted_files[basename(extracted_files) == target_name]
+    
+    if (length(sourcePath) > 0) {
+      dir.create(dirname(binPath), recursive = TRUE, showWarnings = FALSE)
+      file.copy(sourcePath[1], binPath, overwrite = TRUE)
+      if (!is_win) {
+        Sys.chmod(binPath, mode = "0755")
+      }
+    }
+    
+    unlink(tarFile)
+    unlink(extractDir, recursive = TRUE)
+  }
+
   findBinary <- function() {
     is_win <- .Platform$OS.type == "windows"
     bin_name <- if (is_win) "panteao-engine.exe" else "panteao-engine"
@@ -24,7 +65,14 @@ BdiClient <- function(host = "127.0.0.1", port = 0, project = NULL) {
       port <- getFreePort()
     }
     bin <- findBinary()
-    pid <- system2(bin, args = c(project, "--port", as.character(port)), wait = FALSE, stdout = FALSE, stderr = FALSE)
+    if (basename(bin) == "panteao-engine" || basename(bin) == "panteao-engine.exe") {
+      is_win <- .Platform$OS.type == "windows"
+      bin <- file.path(getwd(), if (is_win) "panteao-engine.exe" else "panteao-engine")
+      if (!file.exists(bin)) {
+        downloadEngine(bin)
+      }
+    }
+    pid <- system2(bin, args = c(project, "--port", as.character(port)), wait = FALSE, stdout = "", stderr = "")
     Sys.sleep(0.8)
   } else if (port == 0) {
     port <- 44444
