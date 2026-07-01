@@ -1,6 +1,6 @@
 {
   "name": "panteao-ts",
-  "version": "1.0.0",
+  "version": "1.1.17",
   "description": "TypeScript client for the Panteao BDI agent engine",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
@@ -20,7 +20,14 @@
   "scripts": {
     "build": "tsc && tsc -p tsconfig.cjs.json && echo '{\"type\": \"module\"}' > dist/esm/package.json && echo '{\"type\": \"commonjs\"}' > dist/cjs/package.json"
   },
-  "keywords": ["bdi", "agents", "jason", "ai", "multi-agent", "typescript"],
+  "keywords": [
+    "bdi",
+    "agents",
+    "jason",
+    "ai",
+    "multi-agent",
+    "typescript"
+  ],
   "license": "MIT",
   "files": [
     "dist/"

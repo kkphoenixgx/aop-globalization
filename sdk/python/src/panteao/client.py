@@ -21,7 +21,7 @@ class Panteao:
         if not os.path.exists(self.bin_path):
             self.bin_path = os.path.join(current_dir, bin_name)
             
-        self.version = "1.0.0" # This will be bumped automatically by CI
+        self.version = "1.1.17"
             
         self.auto_reconnect = False if project else auto_reconnect
         self.socket = None

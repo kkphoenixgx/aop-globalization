@@ -1,10 +1,16 @@
 {
   "name": "panteao-js",
-  "version": "1.0.0",
+  "version": "1.1.17",
   "description": "JavaScript client for the Panteao BDI agent engine",
   "main": "index.js",
   "type": "commonjs",
-  "keywords": ["bdi", "agents", "jason", "ai", "multi-agent"],
+  "keywords": [
+    "bdi",
+    "agents",
+    "jason",
+    "ai",
+    "multi-agent"
+  ],
   "license": "MIT",
   "dependencies": {},
   "optionalDependencies": {

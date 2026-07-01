@@ -1,6 +1,6 @@
 Package: panteaoClient
 Title: R Client SDK for Panteao BDI Coprocessor
-Version: 1.0.0
+Version: 1.1.17
 Description: Easy-to-use BDI coprocessor client for integration with statistical workflows.
 License: MIT
 Encoding: UTF-8

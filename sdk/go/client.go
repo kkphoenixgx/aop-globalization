@@ -20,7 +20,7 @@ import (
 	"net/http"
 )
 
-const Version = "1.1.16"
+const Version = "1.1.17"
 
 type ActionCallback func(args []string, respond func(success bool))
 

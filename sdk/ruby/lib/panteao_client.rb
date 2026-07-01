@@ -9,7 +9,7 @@ require 'open3'
 require 'stringio'
 
 module Panteao
-  VERSION = '1.1.16'
+  VERSION = '1.1.17'
 
   class BdiClient
     

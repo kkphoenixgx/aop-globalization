@@ -15,7 +15,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class BdiClient implements AutoCloseable {
-    private static final String VERSION = "1.1.16";
+    private static final String VERSION = "1.1.17";
 
     private static void downloadEngine(String binPath) throws Exception {
         boolean isWin = System.getProperty("os.name").toLowerCase().contains("win");

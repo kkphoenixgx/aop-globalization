@@ -11,7 +11,7 @@ class Panteao {
   Process? _process;
   final Map<String, Function(List<String> args, Function(bool success) respond)> _handlers = {};
   bool _running = false;
-  final String sdkVersion = '1.0.1';
+  final String sdkVersion = '1.1.17';
 
   /// Creates a new Panteao instance.
   /// [host] is the host address, defaults to 127.0.0.1.

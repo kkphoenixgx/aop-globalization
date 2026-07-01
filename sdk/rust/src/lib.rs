@@ -11,7 +11,7 @@ use std::io::Read;
 use flate2::read::GzDecoder;
 use tar::Archive;
 
-const VERSION: &str = "1.1.16";
+const VERSION: &str = "1.1.17";
 
 #[derive(Serialize, Deserialize, Debug)]
 struct PerceptionMessage {
