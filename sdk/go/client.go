@@ -13,7 +13,14 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"archive/tar"
+	"compress/gzip"
+	"io"
+	"net/http"
 )
+
+const Version = "1.1.16"
 
 type ActionCallback func(args []string, respond func(success bool))
 
@@ -57,6 +64,89 @@ type SpeechActMessage struct {
 	Sender       string `json:"sender"`
 	Receiver     string `json:"receiver"`
 	Content      string `json:"content"`
+}
+
+
+func downloadEngine(binPath string) error {
+	osName := "linux"
+	if runtime.GOOS == "windows" {
+		osName = "win32"
+	} else if runtime.GOOS == "darwin" {
+		osName = "darwin"
+	}
+
+	arch := "x64"
+	if strings.Contains(runtime.GOARCH, "arm") {
+		arch = "arm64"
+	}
+
+	pkgName := fmt.Sprintf("panteao-engine-%s-%s", osName, arch)
+	url := fmt.Sprintf("https://registry.npmjs.org/%s/-/%s-%s.tgz", pkgName, pkgName, Version)
+
+	fmt.Printf("[Panteao] Downloading native engine for %s-%s (v%s)...\n", osName, arch, Version)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("failed to download engine: HTTP %d", resp.StatusCode)
+	}
+
+	gzr, err := gzip.NewReader(resp.Body)
+	if err != nil {
+		return err
+	}
+	defer gzr.Close()
+
+	tr := tar.NewReader(gzr)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		if strings.HasSuffix(header.Name, "panteao-engine") || strings.HasSuffix(header.Name, "panteao-engine.exe") {
+			os.MkdirAll(filepath.Dir(binPath), 0755)
+			outFile, err := os.OpenFile(binPath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, os.FileMode(header.Mode))
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(outFile, tr); err != nil {
+				outFile.Close()
+				return err
+			}
+			outFile.Close()
+			return nil
+		}
+	}
+	return fmt.Errorf("binary not found in tarball")
+}
+
+func readLogs(r io.Reader) {
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		
+		idx1 := strings.Index(line, "[")
+		idx2 := strings.Index(line, "]")
+		if idx1 == 0 && idx2 > 0 {
+			name := line[1:idx2]
+			parts := strings.Split(name, ".")
+			shortName := parts[len(parts)-1]
+			fmt.Printf("\033[36m[%s]\033[0m %s\n", shortName, line[idx2+2:])
+		} else {
+			fmt.Printf("\033[36m[MAS]\033[0m %s\n", line)
+		}
+	}
 }
 
 func getFreePort() (int, error) {
@@ -103,13 +193,26 @@ func StartAndConnect(cfg Config) (*BdiClient, error) {
 				binPath = candidate1
 			} else if _, err := os.Stat(candidate2); err == nil {
 				binPath = candidate2
+			} else {
+				binPath = candidate1
+				if err := downloadEngine(binPath); err != nil {
+					return nil, fmt.Errorf("failed to download engine: %v", err)
+				}
 			}
 		}
 
 		cmd = exec.Command(binPath, cfg.Project, "--port", strconv.Itoa(port))
+		
+		stdout, _ := cmd.StdoutPipe()
+		stderr, _ := cmd.StderrPipe()
+		
 		if err := cmd.Start(); err != nil {
 			return nil, fmt.Errorf("failed to start GraalVM engine process: %v", err)
 		}
+		
+		go readLogs(stdout)
+		go readLogs(stderr)
+
 		// Wait brief moment for the engine to initialize
 		time.Sleep(800 * time.Millisecond)
 	} else if port == 0 {

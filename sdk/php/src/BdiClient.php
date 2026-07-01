@@ -3,6 +3,46 @@
 namespace Panteao;
 
 class BdiClient {
+    const VERSION = '1.1.16';
+
+    private static function downloadEngine(string $binPath): void {
+        $isWin = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN');
+        $isMac = (PHP_OS === 'Darwin');
+        $osName = $isWin ? 'win32' : ($isMac ? 'darwin' : 'linux');
+        $arch = (php_uname('m') === 'aarch64' || php_uname('m') === 'arm64') ? 'arm64' : 'x64';
+        
+        $pkgName = "panteao-engine-$osName-$arch";
+        $version = self::VERSION;
+        $url = "https://registry.npmjs.org/$pkgName/-/$pkgName-$version.tgz";
+        
+        echo "\033[36m[Panteao]\033[0m Downloading native engine for $osName-$arch (v$version)...\n";
+        
+        $tgzData = @file_get_contents($url);
+        if ($tgzData === false) throw new \Exception("Failed to download engine from $url");
+        
+        $tmpTgz = tempnam(sys_get_temp_dir(), 'engine') . '.tgz';
+        file_put_contents($tmpTgz, $tgzData);
+        
+        try {
+            $phar = new \PharData($tmpTgz);
+            $extracted = false;
+            foreach (new \RecursiveIteratorIterator($phar) as $file) {
+                $filename = $file->getFilename();
+                if ($filename === 'panteao-engine' || $filename === 'panteao-engine.exe') {
+                    $dir = dirname($binPath);
+                    if (!is_dir($dir)) mkdir($dir, 0777, true);
+                    copy($file->getPathname(), $binPath);
+                    chmod($binPath, 0755);
+                    $extracted = true;
+                    break;
+                }
+            }
+            if (!$extracted) throw new \Exception("Binary not found in tarball");
+        } finally {
+            unlink($tmpTgz);
+        }
+    }
+
     private $socket;
     private $handlers = [];
     private $process;
@@ -45,14 +85,19 @@ class BdiClient {
                 $port = self::getFreePort();
             }
             $bin = self::findBinary();
+            if (!file_exists($bin)) {
+                $currentDir = __DIR__;
+                $bin = $currentDir . '/' . (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN' ? 'panteao-engine.exe' : 'panteao-engine');
+                self::downloadEngine($bin);
+            }
             $descriptorspec = [
                 0 => ["pipe", "r"],
-                1 => ["file", "/dev/null", "w"],
-                2 => ["file", "/dev/null", "w"]
+                1 => ["file", "php://stdout", "a"],
+                2 => ["file", "php://stderr", "a"]
             ];
             if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-                $descriptorspec[1] = ["file", "NUL", "w"];
-                $descriptorspec[2] = ["file", "NUL", "w"];
+                $descriptorspec[1] = ["file", "NUL", "a"];
+                $descriptorspec[2] = ["file", "NUL", "a"];
             }
             $this->process = proc_open([$bin, $project, '--port', (string)$port], $descriptorspec, $pipes);
             usleep(800000);

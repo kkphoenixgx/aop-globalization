@@ -138,6 +138,28 @@ jobs:
         run: |
           sed -i "s/sdkVersion(\".*\")/sdkVersion(\"${{ needs.prepare.outputs.version }}\")/" src/panteao_client.cpp
 
+      - name: Bump Go SDK version
+        working-directory: sdk/go
+        run: |
+          sed -i "s/const Version = \".*\"/const Version = \"${{ needs.prepare.outputs.version }}\"/" client.go
+
+      - name: Bump Rust SDK version
+        working-directory: sdk/rust
+        run: |
+          sed -i "s/version = \".*\"/version = \"${{ needs.prepare.outputs.version }}\"/" Cargo.toml
+          sed -i "s/const VERSION: \&str = \".*\";/const VERSION: \&str = \"${{ needs.prepare.outputs.version }}\";/" src/lib.rs
+
+      - name: Bump Ruby SDK version
+        working-directory: sdk/ruby
+        run: |
+          sed -i "s/s.version     = '.*'/s.version     = '${{ needs.prepare.outputs.version }}'/" panteao-client.gemspec
+          sed -i "s/VERSION = '.*'/VERSION = '${{ needs.prepare.outputs.version }}'/" lib/panteao_client.rb
+
+      - name: Bump PHP SDK version
+        run: |
+          sed -i 's/"version": ".*"/"version": "${{ needs.prepare.outputs.version }}"/' composer.json
+          sed -i "s/const VERSION = '.*'/const VERSION = '${{ needs.prepare.outputs.version }}'/" sdk/php/src/BdiClient.php
+
       - name: Archive C++ SDK
         working-directory: sdk/cpp
         run: |
@@ -201,6 +223,21 @@ jobs:
       - name: Publish C# SDK to NuGet
         working-directory: sdk/csharp
         run: dotnet nuget push out/*.nupkg --source https://api.nuget.org/v3/index.json --api-key $NUGET_AUTH_TOKEN --skip-duplicate
+        continue-on-error: true
+
+      - name: Publish Rust SDK to crates.io
+        working-directory: sdk/rust
+        run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }} --allow-dirty
+        continue-on-error: true
+
+      - name: Publish Ruby SDK to RubyGems
+        working-directory: sdk/ruby
+        env:
+          GEM_HOST_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
+        run: |
+          gem build panteao-client.gemspec
+          gem push panteao-client-${{ needs.prepare.outputs.version }}.gem
+        continue-on-error: true
 
       - name: Commit Version Bumps
         run: |
@@ -208,6 +245,10 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git commit -a -m "chore: bump SDK versions to ${{ needs.prepare.outputs.version }}"
           git push origin HEAD:main
+          
+          # Create Go module specific tag
+          git tag "sdk/go/v${{ needs.prepare.outputs.version }}"
+          git push origin "sdk/go/v${{ needs.prepare.outputs.version }}"
 
       - name: Create GitHub Release and Tag
         uses: softprops/action-gh-release@v2

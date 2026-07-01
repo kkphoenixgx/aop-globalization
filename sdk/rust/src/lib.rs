@@ -7,6 +7,12 @@ use std::path::{Path, PathBuf};
 use std::env;
 use serde::{Deserialize, Serialize};
 
+use std::io::Read;
+use flate2::read::GzDecoder;
+use tar::Archive;
+
+const VERSION: &str = "1.1.16";
+
 #[derive(Serialize, Deserialize, Debug)]
 struct PerceptionMessage {
     r#type: String,
@@ -66,6 +72,76 @@ fn find_binary() -> PathBuf {
     PathBuf::from(bin_name)
 }
 
+
+fn download_engine(bin_path: &PathBuf) -> std::io::Result<()> {
+    let is_win = cfg!(target_os = "windows");
+    let is_mac = cfg!(target_os = "macos");
+    let os_name = if is_win { "win32" } else if is_mac { "darwin" } else { "linux" };
+    
+    let arch = if cfg!(target_arch = "aarch64") || cfg!(target_arch = "arm") { "arm64" } else { "x64" };
+    
+    let pkg_name = format!("panteao-engine-{}-{}", os_name, arch);
+    let url = format!("https://registry.npmjs.org/{}/-/{}-{}.tgz", pkg_name, pkg_name, VERSION);
+    
+    println!("\x1b[36m[Panteao]\x1b[0m Downloading native engine for {}-{} (v{})...", os_name, arch, VERSION);
+    
+    let response = ureq::get(&url).call().map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+    
+    let tar = GzDecoder::new(response.into_reader());
+    let mut archive = Archive::new(tar);
+    
+    for file in archive.entries()? {
+        let mut file = file?;
+        let path = file.path()?.into_owned();
+        let path_str = path.to_string_lossy();
+        
+        if path_str.ends_with("panteao-engine") || path_str.ends_with("panteao-engine.exe") {
+            if let Some(parent) = bin_path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            let mut out = std::fs::File::create(bin_path)?;
+            std::io::copy(&mut file, &mut out)?;
+            
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let mut perms = std::fs::metadata(bin_path)?.permissions();
+                perms.set_mode(0o755);
+                std::fs::set_permissions(bin_path, perms)?;
+            }
+            return Ok(());
+        }
+    }
+    
+    Err(std::io::Error::new(std::io::ErrorKind::NotFound, "Binary not found in tarball"))
+}
+
+fn read_logs(reader: impl std::io::Read + Send + 'static) {
+    std::thread::spawn(move || {
+        let buf_reader = BufReader::new(reader);
+        for line in buf_reader.lines() {
+            if let Ok(line) = line {
+                let trimmed = line.trim();
+                if trimmed.is_empty() {
+                    continue;
+                }
+                if let (Some(idx1), Some(idx2)) = (trimmed.find('['), trimmed.find(']')) {
+                    if idx1 == 0 && idx2 > 0 {
+                        let name = &trimmed[1..idx2];
+                        let parts: Vec<&str> = name.split('.').collect();
+                        let short_name = parts.last().unwrap_or(&name);
+                        println!("\x1b[36m[{}]\x1b[0m {}", short_name, &trimmed[idx2 + 2..]);
+                    } else {
+                        println!("\x1b[36m[MAS]\x1b[0m {}", trimmed);
+                    }
+                } else {
+                    println!("\x1b[36m[MAS]\x1b[0m {}", trimmed);
+                }
+            }
+        }
+    });
+}
+
 impl BdiClient {
     pub fn connect(addr: &str) -> std::io::Result<Self> {
         Self::connect_with_project(addr, None)
@@ -88,14 +164,26 @@ impl BdiClient {
             if port == 0 {
                 port = get_free_port()?;
             }
-            let bin = find_binary();
-            let child = std::process::Command::new(bin)
+            let mut bin = find_binary();
+            if !bin.exists() {
+                let exe_dir = env::current_exe()?.parent().unwrap().to_path_buf();
+                bin = exe_dir.join(if cfg!(target_os = "windows") { "panteao-engine.exe" } else { "panteao-engine" });
+                download_engine(&bin)?;
+            }
+            
+            let mut child = std::process::Command::new(&bin)
                 .arg(proj_path)
                 .arg("--port")
                 .arg(port.to_string())
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
                 .spawn()?;
+                
+            let stdout = child.stdout.take().unwrap();
+            let stderr = child.stderr.take().unwrap();
+            read_logs(stdout);
+            read_logs(stderr);
+            
             child_proc = Some(Arc::new(Mutex::new(child)));
             std::thread::sleep(std::time::Duration::from_millis(800));
         } else if port == 0 {

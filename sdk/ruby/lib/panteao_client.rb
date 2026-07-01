@@ -1,8 +1,68 @@
 require 'socket'
 require 'json'
 
+require 'net/http'
+require 'rubygems/package'
+require 'zlib'
+require 'fileutils'
+require 'open3'
+require 'stringio'
+
 module Panteao
+  VERSION = '1.1.16'
+
   class BdiClient
+    
+    def self.download_engine(bin_path)
+      is_win = Gem.win_platform?
+      is_mac = /darwin/ =~ RUBY_PLATFORM
+      os_name = is_win ? 'win32' : (is_mac ? 'darwin' : 'linux')
+      
+      arch = (/arm/ =~ RUBY_PLATFORM || /aarch64/ =~ RUBY_PLATFORM) ? 'arm64' : 'x64'
+      
+      pkg_name = "panteao-engine-#{os_name}-#{arch}"
+      url = "https://registry.npmjs.org/#{pkg_name}/-/#{pkg_name}-#{VERSION}.tgz"
+      
+      puts "\e[36m[Panteao]\e[0m Downloading native engine for #{os_name}-#{arch} (v#{VERSION})..."
+      
+      uri = URI(url)
+      response = Net::HTTP.get_response(uri)
+      
+      raise "Failed to download engine: #{response.code}" unless response.is_a?(Net::HTTPSuccess)
+      
+      sio = StringIO.new(response.body)
+      gz = Zlib::GzipReader.new(sio)
+      tar = Gem::Package::TarReader.new(gz)
+      
+      tar.each do |entry|
+        if entry.full_name.end_with?('panteao-engine') || entry.full_name.end_with?('panteao-engine.exe')
+          FileUtils.mkdir_p(File.dirname(bin_path))
+          File.open(bin_path, 'wb') { |f| f.write(entry.read) }
+          FileUtils.chmod(0755, bin_path)
+          return
+        end
+      end
+      raise "Binary not found in tarball"
+    end
+    
+    def self.read_logs(io)
+      Thread.new do
+        begin
+          io.each_line do |line|
+            line = line.strip
+            next if line.empty?
+            if line.start_with?('[') && (idx2 = line.index(']'))
+              name = line[1...idx2].split('.').last
+              puts "\e[36m[#{name}]\e[0m #{line[(idx2 + 2)..-1]}"
+            else
+              puts "\e[36m[MAS]\e[0m #{line}"
+            end
+          end
+        rescue
+        end
+      end
+    end
+
     def self.get_free_port
       server = TCPServer.new('127.0.0.1', 0)
       port = server.addr[1]
@@ -35,7 +95,16 @@ module Panteao
           port = self.class.get_free_port
         end
         bin = self.class.find_binary
-        @pid = spawn(bin, project, '--port', port.to_s, out: File::NULL, err: File::NULL)
+        unless File.exist?(bin)
+          current_dir = File.expand_path(File.dirname(__FILE__))
+          bin = File.join(current_dir, Gem.win_platform? ? 'panteao-engine.exe' : 'panteao-engine')
+          self.class.download_engine(bin)
+        end
+        
+        @stdin, @stdout, @stderr, @wait_thr = Open3.popen3(bin, project, '--port', port.to_s)
+        @pid = @wait_thr.pid
+        self.class.read_logs(@stdout)
+        self.class.read_logs(@stderr)
         sleep 0.8
       elsif port == 0
         port = 44444
