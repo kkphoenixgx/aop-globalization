@@ -19,6 +19,7 @@ jobs:
   prepare:
     name: Calculate next version
     runs-on: ubuntu-latest
+    environment: release
     if: "contains(github.event.head_commit.message, '+version') || github.event_name == 'workflow_dispatch'"
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -178,6 +179,14 @@ jobs:
 
 
 
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: Publish Dart SDK to pub.dev
+        working-directory: sdk/dart
+        run: dart pub publish --force
+        continue-on-error: true
+
       - name: NuGet Login
         uses: NuGet/login@v1
         with:
@@ -186,14 +195,12 @@ jobs:
       - name: Publish C# SDK to NuGet
         working-directory: sdk/csharp
         run: dotnet nuget push out/*.nupkg --source https://api.nuget.org/v3/index.json --api-key $NUGET_AUTH_TOKEN --skip-duplicate
-        continue-on-error: true
 
       - name: Commit Version Bumps
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add sdk/dart/pubspec.yaml sdk/dart/lib/panteao.dart sdk/js/package.json sdk/ts/package.json pyproject.toml sdk/csharp/Panteao.Client.csproj sdk/python/pyproject.toml src/panteao_client.cpp
-          git commit -m "chore: bump SDK versions to ${{ needs.prepare.outputs.version }}"
+          git commit -a -m "chore: bump SDK versions to ${{ needs.prepare.outputs.version }}"
           git push origin HEAD:main
 
       - name: Create GitHub Release and Tag
@@ -209,9 +216,3 @@ jobs:
             panteao-dart-${{ needs.prepare.outputs.version }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Trigger Dart Publish Workflow
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh workflow run publish-dart.yml --ref v${{ needs.prepare.outputs.version }}
