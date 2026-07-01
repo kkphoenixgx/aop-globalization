@@ -3,7 +3,7 @@
     "description": "PHP client SDK for Panteao BDI Coprocessor",
     "autoload": {
         "psr-4": {
-            "Panteao\\": "src/"
+            "Panteao\\": "sdk/php/src/"
         }
     },
     "require": {
