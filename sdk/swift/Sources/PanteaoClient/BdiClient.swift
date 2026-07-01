@@ -8,6 +8,87 @@ import Darwin
 public typealias ActionCallback = ([String], @escaping (Bool) -> Void) -> Void
 
 public class BdiClient {
+
+    private static let version = "1.1.16"
+
+    private static func downloadEngine(to binPath: String) {
+        let isWin = ProcessInfo.processInfo.environment["OS"]?.contains("Windows") == true
+        let isMac = FileManager.default.fileExists(atPath: "/usr/lib/libobjc.A.dylib")
+        let osName = isWin ? "win32" : (isMac ? "darwin" : "linux")
+        
+        #if arch(arm64)
+        let archStr = "arm64"
+        #else
+        let archStr = "x64"
+        #endif
+        
+        let pkgName = "panteao-engine-\(osName)-\(archStr)"
+        let urlStr = "https://registry.npmjs.org/\(pkgName)/-/\(pkgName)-\(version).tgz"
+        
+        print("\u{1B}[36m[Panteao]\u{1B}[0m Downloading native engine for \(osName)-\(archStr) (v\(version))...")
+        
+        let tmpDir = FileManager.default.temporaryDirectory
+        let tarFile = tmpDir.appendingPathComponent("engine.tgz").path
+        
+        let curl = Process()
+        curl.executableURL = URL(fileURLWithPath: isWin ? "C:\\Windows\\System32\\curl.exe" : "/usr/bin/curl")
+        curl.arguments = ["-sL", "-o", tarFile, urlStr]
+        try? curl.run()
+        curl.waitUntilExit()
+        
+        let tmpExtract = tmpDir.appendingPathComponent("extract_\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(atPath: tmpExtract.path, withIntermediateDirectories: true, attributes: nil)
+        
+        let tar = Process()
+        tar.executableURL = URL(fileURLWithPath: isWin ? "C:\\Windows\\System32\\tar.exe" : "/usr/bin/tar")
+        tar.arguments = ["-xzf", tarFile, "-C", tmpExtract.path]
+        try? tar.run()
+        tar.waitUntilExit()
+        
+        if let enumerator = FileManager.default.enumerator(atPath: tmpExtract.path) {
+            for case let file as String in enumerator {
+                if file.hasSuffix("panteao-engine") || file.hasSuffix("panteao-engine.exe") {
+                    let fullPath = tmpExtract.appendingPathComponent(file).path
+                    let dir = (binPath as NSString).deletingLastPathComponent
+                    try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true, attributes: nil)
+                    try? FileManager.default.moveItem(atPath: fullPath, toPath: binPath)
+                    
+                    if !isWin {
+                        let chmod = Process()
+                        chmod.executableURL = URL(fileURLWithPath: "/bin/chmod")
+                        chmod.arguments = ["+x", binPath]
+                        try? chmod.run()
+                        chmod.waitUntilExit()
+                    }
+                    break
+                }
+            }
+        }
+        try? FileManager.default.removeItem(atPath: tarFile)
+        try? FileManager.default.removeItem(atPath: tmpExtract.path)
+    }
+
+    private static func readLogs(pipe: Pipe) {
+        DispatchQueue.global().async {
+            let handle = pipe.fileHandleForReading
+            let data = handle.readDataToEndOfFile()
+            if let str = String(data: data, encoding: .utf8) {
+                let lines = str.split(separator: "\n")
+                for line in lines {
+                    let s = String(line).trimmingCharacters(in: .whitespaces)
+                    if s.isEmpty { continue }
+                    if s.hasPrefix("["), let idx = s.firstIndex(of: "]") {
+                        let name = String(s[s.index(after: s.startIndex)..<idx])
+                        let shortName = name.split(separator: ".").last ?? Substring(name)
+                        print("\u{1B}[36m[\(shortName)]\u{1B}[0m \(s[s.index(idx, offsetBy: 2)...])")
+                    } else {
+                        print("\u{1B}[36m[MAS]\u{1B}[0m \(s)")
+                    }
+                }
+            }
+        }
+    }
+
     private var sockFd: Int32 = -1
     private var actionHandlers: [String: ActionCallback] = [:]
     private var process: Process?
@@ -20,12 +101,29 @@ public class BdiClient {
         self.port = port
         if let proj = project {
             if self.port == 0 { self.port = BdiClient.getFreePort() }
+            var bin = BdiClient.findBinary()
+            if bin == "panteao-engine" || bin == "panteao-engine.exe" {
+                let cwd = FileManager.default.currentDirectoryPath
+                let isWin = ProcessInfo.processInfo.environment["OS"]?.contains("Windows") == true
+                bin = cwd + "/" + (isWin ? "panteao-engine.exe" : "panteao-engine")
+                if !FileManager.default.fileExists(atPath: bin) {
+                    BdiClient.downloadEngine(to: bin)
+                }
+            }
+            
             let proc = Process()
-            proc.executableURL = URL(fileURLWithPath: BdiClient.findBinary())
+            proc.executableURL = URL(fileURLWithPath: bin)
             proc.arguments = [proj, "--port", String(self.port)]
-            proc.standardOutput = FileHandle.nullDevice
-            proc.standardError = FileHandle.nullDevice
+            
+            let stdoutPipe = Pipe()
+            let stderrPipe = Pipe()
+            proc.standardOutput = stdoutPipe
+            proc.standardError = stderrPipe
+            
             try? proc.run()
+            BdiClient.readLogs(pipe: stdoutPipe)
+            BdiClient.readLogs(pipe: stderrPipe)
+            
             self.process = proc
             usleep(800000)
         } else {
