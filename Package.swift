@@ -7,6 +7,6 @@ let package = Package(
         .library(name: "PanteaoClient", targets: ["PanteaoClient"]),
     ],
     targets: [
-        .target(name: "PanteaoClient", dependencies: []),
+        .target(name: "PanteaoClient", dependencies: [], path: "sdk/swift/Sources/PanteaoClient"),
     ]
 )
