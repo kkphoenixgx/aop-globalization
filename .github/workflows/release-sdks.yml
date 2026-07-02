@@ -263,9 +263,9 @@ jobs:
         with:
           user: kkphoenix
 
-      - name: Publish C# SDK to NuGet
+      - name: Publish C# SDK
         working-directory: sdk/csharp
-        run: dotnet nuget push out/*.nupkg --source https://api.nuget.org/v3/index.json --api-key $NUGET_AUTH_TOKEN --skip-duplicate
+        run: dotnet nuget push out/*.nupkg --source https://api.nuget.org/v3/index.json --skip-duplicate
         continue-on-error: true
 
       - name: Publish Rust SDK to crates.io
