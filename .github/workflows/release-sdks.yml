@@ -248,16 +248,6 @@ jobs:
         run: |
           tar -czf ../../panteao-dart-${{ needs.prepare.outputs.version }}.tar.gz .
 
-
-
-      - name: Setup Dart
-        uses: dart-lang/setup-dart@v1
-
-      - name: Publish Dart SDK to pub.dev
-        working-directory: sdk/dart
-        run: dart pub publish --force
-        continue-on-error: true
-
       - name: NuGet Login
         uses: NuGet/login@v1
         with:
@@ -265,7 +255,7 @@ jobs:
 
       - name: Publish C# SDK
         working-directory: sdk/csharp
-        run: dotnet nuget push out/*.nupkg --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: dotnet nuget push out/*.nupkg --source nuget.org --skip-duplicate
         continue-on-error: true
 
       - name: Publish Rust SDK to crates.io

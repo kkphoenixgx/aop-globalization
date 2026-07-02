@@ -1,4 +1,5 @@
 .context/
+.agents/
 .gradle/
 build/*
 !build/libs/
