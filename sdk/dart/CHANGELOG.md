@@ -1,3 +1,6 @@
+## 1.1.20
+
+- GH_PAT para automatizar o OIDC do Dart
 ## 1.1.19
 
 - Separa Dart workflow e ajusta config de publish
