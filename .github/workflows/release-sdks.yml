@@ -146,7 +146,7 @@ jobs:
       - name: Bump Rust SDK version
         working-directory: sdk/rust
         run: |
-          sed -i "s/version = \".*\"/version = \"${{ needs.prepare.outputs.version }}\"/" Cargo.toml
+          sed -i "s/^version = \".*\"/version = \"${{ needs.prepare.outputs.version }}\"/" Cargo.toml
           sed -i "s/const VERSION: \&str = \".*\";/const VERSION: \&str = \"${{ needs.prepare.outputs.version }}\";/" src/lib.rs
 
       - name: Bump Ruby SDK version
@@ -290,7 +290,7 @@ jobs:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
-          ./gradlew publishToMavenLocal
+          gradle publishToMavenLocal
           cd ~/.m2/repository/com/kkphoenix/panteao/${{ needs.prepare.outputs.version }}
           zip -r panteao-bundle.zip .
           curl -u "$MAVEN_USERNAME:$MAVEN_PASSWORD" -X POST "https://central.sonatype.com/api/v1/publisher/upload?publishingType=AUTOMATIC" -H "Content-Type: multipart/form-data" -F "bundle=@panteao-bundle.zip"
