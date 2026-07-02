@@ -253,7 +253,7 @@ public class Launcher {
                 File talariaAslFile = new File(jcmFile.getParentFile(), "talaria.asl");
                 if (!talariaAslFile.exists()) {
                     try (java.io.FileWriter aslWriter = new java.io.FileWriter(talariaAslFile)) {
-                        aslWriter.write("!start.\n+!start.\n");
+                        aslWriter.write("!start.\n+!start <- true.\n");
                     }
                 }
             } catch (Exception e) {
