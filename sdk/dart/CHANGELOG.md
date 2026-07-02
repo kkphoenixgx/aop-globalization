@@ -1,3 +1,6 @@
+## 1.1.19
+
+- Separa Dart workflow e ajusta config de publish
 ## 1.1.18
 
 - fix: Remove --api-key para o NuGet usar o Trusted Publishing (OIDC)
