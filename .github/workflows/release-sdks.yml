@@ -259,12 +259,10 @@ jobs:
       - name: Publish C# SDK
         working-directory: sdk/csharp
         run: dotnet nuget push out/*.nupkg --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
-        continue-on-error: true
 
       - name: Publish Rust SDK to crates.io
         working-directory: sdk/rust
         run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }} --allow-dirty
-        continue-on-error: true
 
       - name: Publish Ruby SDK to RubyGems
         working-directory: sdk/ruby
@@ -273,7 +271,6 @@ jobs:
         run: |
           gem build panteao-client.gemspec
           gem push panteao-client-${{ needs.prepare.outputs.version }}.gem
-        continue-on-error: true
 
       - name: Publish Java SDK
         working-directory: sdk/java
@@ -287,7 +284,6 @@ jobs:
           cd ~/.m2/repository/com/kkphoenix/panteao/${{ needs.prepare.outputs.version }}
           zip -r panteao-bundle.zip .
           curl -u "$MAVEN_USERNAME:$MAVEN_PASSWORD" -X POST "https://central.sonatype.com/api/v1/publisher/upload?publishingType=AUTOMATIC" -H "Content-Type: multipart/form-data" -F "bundle=@panteao-bundle.zip"
-        continue-on-error: true
 
       - name: Commit Version Bumps
         run: |
