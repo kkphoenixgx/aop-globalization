@@ -28,7 +28,6 @@ public class BdiClient implements AutoCloseable {
         String pkgName = "panteao-engine-" + osName + "-" + archStr;
         String urlStr = "https://registry.npmjs.org/" + pkgName + "/-/" + pkgName + "-" + VERSION + ".tgz";
         
-        System.out.println("\033[36m[Panteao]\033[0m Downloading native engine for " + osName + "-" + archStr + " (v" + VERSION + ")...");
         
         java.io.File tmpDir = new java.io.File(System.getProperty("java.io.tmpdir"));
         java.io.File tarFile = new java.io.File(tmpDir, "engine-" + java.util.UUID.randomUUID().toString() + ".tgz");
@@ -131,6 +130,10 @@ public class BdiClient implements AutoCloseable {
     }
 
     public BdiClient(String host, int port, String project) throws Exception {
+        this(host, port, project, false);
+    }
+
+    public BdiClient(String host, int port, String project, boolean dev) throws Exception {
         String actualHost = (host == null || host.isEmpty()) ? "127.0.0.1" : host;
         if (project != null && !project.isEmpty()) {
             if (port == 0) {
@@ -145,6 +148,7 @@ public class BdiClient implements AutoCloseable {
                 }
             }
             ProcessBuilder pb = new ProcessBuilder(bin, project, "--port", String.valueOf(port));
+            if (dev) pb.command().add("--dev");
             pb.redirectOutput(ProcessBuilder.Redirect.PIPE);
             pb.redirectError(ProcessBuilder.Redirect.PIPE);
             this.engineProcess = pb.start();

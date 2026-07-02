@@ -83,7 +83,6 @@ fn download_engine(bin_path: &PathBuf) -> std::io::Result<()> {
     let pkg_name = format!("panteao-engine-{}-{}", os_name, arch);
     let url = format!("https://registry.npmjs.org/{}/-/{}-{}.tgz", pkg_name, pkg_name, VERSION);
     
-    println!("\x1b[36m[Panteao]\x1b[0m Downloading native engine for {}-{} (v{})...", os_name, arch, VERSION);
     
     let response = ureq::get(&url).call().map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
     
@@ -144,10 +143,10 @@ fn read_logs(reader: impl std::io::Read + Send + 'static) {
 
 impl BdiClient {
     pub fn connect(addr: &str) -> std::io::Result<Self> {
-        Self::connect_with_project(addr, None)
+        Self::connect_with_project(addr, None, false)
     }
 
-    pub fn connect_with_project(addr: &str, project: Option<&str>) -> std::io::Result<Self> {
+    pub fn connect_with_project(addr: &str, project: Option<&str>, dev: bool) -> std::io::Result<Self> {
         let mut port = 0;
         let mut host = "127.0.0.1".to_string();
         if let Some(pos) = addr.find(':') {

@@ -8,7 +8,7 @@ import java.net.Socket
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.ConcurrentHashMap
 
-class BdiClient(host: String, port: Int, project: String? = null) : Closeable {
+class BdiClient(host: String, port: Int, project: String? = null, val dev: Boolean = false) : Closeable {
 
     private val socket: Socket
     private val out: PrintWriter
@@ -32,7 +32,6 @@ class BdiClient(host: String, port: Int, project: String? = null) : Closeable {
             val pkgName = "panteao-engine-$osName-$archStr"
             val urlStr = "https://registry.npmjs.org/$pkgName/-/$pkgName-$VERSION.tgz"
             
-            println("\u001B[36m[Panteao]\u001B[0m Downloading native engine for $osName-$archStr (v$VERSION)...")
             
             val tmpDir = java.io.File(System.getProperty("java.io.tmpdir"))
             val tarFile = java.io.File(tmpDir, "engine-${java.util.UUID.randomUUID()}.tgz")
@@ -133,6 +132,7 @@ class BdiClient(host: String, port: Int, project: String? = null) : Closeable {
                 }
             }
             val pb = ProcessBuilder(bin, project, "--port", actualPort.toString())
+            if (dev) pb.command().add("--dev")
             pb.redirectOutput(ProcessBuilder.Redirect.PIPE)
             pb.redirectError(ProcessBuilder.Redirect.PIPE)
             engineProcess = pb.start()

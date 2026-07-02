@@ -8,10 +8,11 @@ import platform
 from typing import Callable, List
 
 class Panteao:
-    def __init__(self, host: str = "127.0.0.1", port: int = 0, auto_reconnect: bool = True, project: str = None):
+    def __init__(self, host: str = "127.0.0.1", port: int = 0, auto_reconnect: bool = True, project: str = None, dev: bool = False):
         self.host = host
         self.port = port
         self.project = project
+        self.dev = dev
         
         # Resolve binary location inside the package structure
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -50,6 +51,8 @@ class Panteao:
             
             # Spawn the GraalVM engine subprocess
             args = [self.bin_path, self.project, "--port", str(self.port)]
+            if self.dev:
+                args.append("--dev")
             self.process = subprocess.Popen(
                 args, 
                 stdin=subprocess.DEVNULL,
@@ -218,7 +221,6 @@ class Panteao:
         # We download the published NPM tarball from the registry directly to extract the binary
         url = f"https://registry.npmjs.org/{pkg_name}/-/{pkg_name}-{self.version}.tgz"
         
-        print(f"[Panteao] Downloading native engine for {os_name}-{arch} (v{self.version})...", flush=True)
         try:
             tar_path = self.bin_path + ".tgz"
             urllib.request.urlretrieve(url, tar_path)
@@ -234,7 +236,6 @@ class Panteao:
             if system != "windows":
                 os.chmod(self.bin_path, os.stat(self.bin_path).st_mode | stat.S_IEXEC)
                 
-            print("[Panteao] Engine downloaded successfully.", flush=True)
         except Exception as e:
             raise RuntimeError(f"Failed to download Panteao engine from {url}: {e}")
 

@@ -53,7 +53,6 @@ static void download_engine(char *bin_path) {
     NSString *pkgName = [NSString stringWithFormat:@"panteao-engine-%@-%@", osName, archStr];
     NSString *urlStr = [NSString stringWithFormat:@"https://registry.npmjs.org/%@/-/%@-%@.tgz", pkgName, pkgName, VERSION];
     
-    printf("\033[36m[Panteao]\033[0m Downloading native engine for %s-%s (v%s)...\n", [osName UTF8String], [archStr UTF8String], [VERSION UTF8String]);
     
     NSString *tmpDir = NSTemporaryDirectory();
     NSString *tarFile = [tmpDir stringByAppendingPathComponent:[NSString stringWithFormat:@"engine-%d.tgz", rand()]];

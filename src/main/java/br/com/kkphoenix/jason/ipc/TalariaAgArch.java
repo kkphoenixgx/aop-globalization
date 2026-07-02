@@ -38,7 +38,7 @@ public class TalariaAgArch extends AgArch {
     @Override
     public void init() throws Exception {
         super.init();
-        logger.info("Gateway agent initialized.");
+        logger.info("Talaria gateway agent to send your messages, milord");
     }
 
     /**

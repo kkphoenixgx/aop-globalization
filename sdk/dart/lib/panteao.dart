@@ -8,6 +8,7 @@ class Panteao {
   final String host;
   int port;
   final String? project;
+  final bool dev;
   Process? _process;
   final Map<String, Function(List<String> args, Function(bool success) respond)> _handlers = {};
   bool _running = false;
@@ -17,7 +18,8 @@ class Panteao {
   /// [host] is the host address, defaults to 127.0.0.1.
   /// [port] is the connection port. If 0, an ephemeral port is used.
   /// [project] is the optional path to the .jcm MAS configuration file.
-  Panteao({this.host = '127.0.0.1', this.port = 0, this.project});
+  /// [dev] whether to enable the Mind Inspector and dev mode in the engine.
+  Panteao({this.host = '127.0.0.1', this.port = 0, this.project, this.dev = false});
 
   static Future<int> getFreePort() async {
     final socket = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
@@ -41,8 +43,6 @@ class Panteao {
       return binPath;
     }
 
-    print('[Panteao] Downloading native engine for $osName-$arch (v$sdkVersion)...');
-    
     final url = Uri.parse('https://registry.npmjs.org/$pkgName/-/$pkgName-$sdkVersion.tgz');
     final httpClient = HttpClient();
     final request = await httpClient.getUrl(url);
@@ -68,7 +68,6 @@ class Panteao {
       }
     } catch (_) {}
     
-    print('[Panteao] Engine downloaded successfully.');
     return binPath;
   }
 
@@ -79,7 +78,9 @@ class Panteao {
         port = await getFreePort();
       }
       final bin = await _downloadEngine();
-      _process = await Process.start(bin, [project!, '--port', port.toString()]);
+      final args = [project!, '--port', port.toString()];
+      if (dev) args.add('--dev');
+      _process = await Process.start(bin, args);
       
       _process!.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen(_readLog);
       _process!.stderr.transform(utf8.decoder).transform(const LineSplitter()).listen(_readLog);

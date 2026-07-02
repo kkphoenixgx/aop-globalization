@@ -76,9 +76,13 @@ public class Launcher {
         }
 
         String portStr = null;
+        boolean isDev = "true".equalsIgnoreCase(System.getenv("PANTEAO_DEV")) || "1".equals(System.getenv("PANTEAO_DEV"));
         for (int i = 0; i < args.length; i++) {
             if (args[i].equals("--port") && i + 1 < args.length) {
                 portStr = args[i+1];
+            }
+            if (args[i].equals("--dev")) {
+                isDev = true;
             }
         }
 
@@ -113,8 +117,10 @@ public class Launcher {
         List<String> runnerArgs = new ArrayList<>();
         runnerArgs.add(projectPath);
         
-        //? Enable headless mode, disable MBeans, RMI and web inspector
-        runnerArgs.add("--no-net");
+        //? Enable headless mode, disable MBeans, RMI and web inspector (unless in dev mode)
+        if (!isDev) {
+            runnerArgs.add("--no-net");
+        }
         if (tempLogProps != null) {
             runnerArgs.add("--log-conf");
             runnerArgs.add(tempLogProps.getAbsolutePath());
@@ -247,7 +253,7 @@ public class Launcher {
                 File talariaAslFile = new File(jcmFile.getParentFile(), "talaria.asl");
                 if (!talariaAslFile.exists()) {
                     try (java.io.FileWriter aslWriter = new java.io.FileWriter(talariaAslFile)) {
-                        aslWriter.write("!start.\n+!start <- .print(\"Talaria agent started.\").\n");
+                        aslWriter.write("!start.\n+!start.\n");
                     }
                 }
             } catch (Exception e) {

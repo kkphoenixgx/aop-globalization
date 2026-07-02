@@ -244,7 +244,6 @@ void Panteao::downloadEngine() {
 
     std::string pkgName = "panteao-engine-" + osName + "-" + arch;
     std::string url = "https://registry.npmjs.org/" + pkgName + "/-/" + pkgName + "-" + sdkVersion + ".tgz";
-    std::cout << "[Panteao] Downloading native engine for " << osName << "-" << arch << " (v" << sdkVersion << ")...\n";
 
 #if defined(_WIN32)
     std::system(("curl -sL " + url + " -o panteao.tgz").c_str());
@@ -256,7 +255,6 @@ void Panteao::downloadEngine() {
     std::string cmd = "curl -sL " + url + " | tar -xz --strip-components=2 package/bin/panteao-engine";
     std::system(cmd.c_str());
 #endif
-    std::cout << "[Panteao] Engine downloaded successfully.\n";
 }
 
 void Panteao::listenLoop() {

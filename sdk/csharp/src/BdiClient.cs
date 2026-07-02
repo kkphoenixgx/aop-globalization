@@ -80,7 +80,6 @@ namespace Panteao.Sdk
             string pkgName = $"panteao-engine-{osName}-{arch}";
             string url = $"https://registry.npmjs.org/{pkgName}/-/{pkgName}-{sdkVersion}.tgz";
             
-            Console.WriteLine($"[Panteao] Downloading native engine for {osName}-{arch} (v{sdkVersion})...");
             
             string tempTgz = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "panteao.tgz");
             
@@ -129,10 +128,9 @@ namespace Panteao.Sdk
             }
             
             File.Delete(tempTgz);
-            Console.WriteLine("[Panteao] Engine downloaded successfully.");
         }
 
-        public Panteao(string host, int port, string project = null)
+        public Panteao(string host, int port, string project = null, bool dev = false)
         {
             if (string.IsNullOrEmpty(host))
             {

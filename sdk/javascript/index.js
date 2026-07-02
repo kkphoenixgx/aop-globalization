@@ -106,6 +106,7 @@ class BdiClient extends EventEmitter {
         this.host = options.host || '127.0.0.1';
         this.port = options.port || 0;
         this.project = options.project;
+        this.dev = options.dev || false;
 
         this.autoReconnect =
             options.project
@@ -189,6 +190,9 @@ class BdiClient extends EventEmitter {
                 '--port',
                 String(this.port)
             ];
+            if (this.dev) {
+                args.push('--dev');
+            }
 
             this.process = child_process.spawn(
                 this.binPath,

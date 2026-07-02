@@ -23,7 +23,6 @@ module Panteao
       pkg_name = "panteao-engine-#{os_name}-#{arch}"
       url = "https://registry.npmjs.org/#{pkg_name}/-/#{pkg_name}-#{VERSION}.tgz"
       
-      puts "\e[36m[Panteao]\e[0m Downloading native engine for #{os_name}-#{arch} (v#{VERSION})..."
       
       uri = URI(url)
       response = Net::HTTP.get_response(uri)
@@ -89,7 +88,8 @@ module Panteao
       bin_name
     end
 
-    def initialize(host = '127.0.0.1', port = 0, project: nil)
+    def initialize(host = '127.0.0.1', port = 0, project: nil, dev: false)
+      @dev = dev
       if project
         if port == 0
           port = self.class.get_free_port

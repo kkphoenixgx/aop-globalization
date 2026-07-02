@@ -15,7 +15,6 @@ class BdiClient {
         $version = self::VERSION;
         $url = "https://registry.npmjs.org/$pkgName/-/$pkgName-$version.tgz";
         
-        echo "\033[36m[Panteao]\033[0m Downloading native engine for $osName-$arch (v$version)...\n";
         
         $tgzData = @file_get_contents($url);
         if ($tgzData === false) throw new \Exception("Failed to download engine from $url");

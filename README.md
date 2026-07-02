@@ -99,6 +99,15 @@ Web browser execution is enabled by Leaning Technologies' CheerpJ, which runs th
 
 By decoupling the cognitive cycle from the application logic, the reasoning engine and the web API processes run independently. If the web server experiences a CPU spike or database lock, the BDI reasoning loop remains active. Under Kubernetes, the engine can be deployed as a sidecar container alongside the API pod. With a native binary memory footprint of 12MB, running multiple sidecar instances introduces negligible memory overhead. The client SDKs include automatic reconnection routines with exponential backoff and local perception queues to ensure message delivery during engine restarts.
 
+### How can I debug the agents' minds (Mind Inspector)?
+
+Panteão supports the native Jason Mind Inspector, a web interface to visualize agents' beliefs, goals, and plans in real-time. For security and performance reasons, the web server is completely disabled by default in production. To enable it during development, you must pass the `dev` flag (e.g. `dev=True` or `dev: true`) to your SDK constructor when spawning the engine:
+
+```python
+engine = Panteao(host="127.0.0.1", port=0, project="./project.jcm", dev=True)
+```
+
+When enabled, the engine will print the Mind Inspector URL (typically `http://localhost:3271`) to the console on startup. If you are using an unsupported language or a custom wrapper, you can enable it by setting the `PANTEAO_DEV=1` environment variable (`.env` file) before executing the engine.
 
 ## Performance & Corporate Impact
 
@@ -138,7 +147,7 @@ Boilerplate code:
 from panteao import Panteao
 
 # Spawns the native binary automatically
-engine = Panteao(host="127.0.0.1", port=0, project="./project.jcm")
+engine = Panteao(host="127.0.0.1", port=0, project="./project.jcm", dev=True)
 engine.connect()
 
 def turn_on_ac(args, respond):
@@ -169,7 +178,7 @@ package main
 import "github.com/kkphoenixgx/panteao/sdk/go"
 
 func main() {
-	engine := panteao.New("127.0.0.1:0")
+	engine := panteao.StartAndConnect(panteao.Config{ Host: "127.0.0.1", Port: 0, Project: "./project.jcm", Dev: true })
 	engine.Connect()
 
 	engine.registerAction("turn_on_ac", func(sender, receiver, content string) {
@@ -196,7 +205,7 @@ npm install panteao-js
 const { Panteao } = require('panteao-js');
 
 // Spawns the native binary automatically
-const engine = new Panteao({ project: './project.jcm' });
+const engine = new Panteao({ project: './project.jcm', dev: true });
 engine.connect();
 
 engine.registerAction('turn_on_ac', (args, respond) => {
@@ -222,7 +231,7 @@ The package ships with **full TypeScript types** built-in — no need to install
 
 | Type / Interface | Description |
 |---|---|
-| `BdiClientOptions` | Constructor options (`host`, `port`, `project`, `binPath`, `autoReconnect`, `reconnectInterval`) |
+| `BdiClientOptions` | Constructor options (`host`, `port`, `project`, `dev`, `binPath`, `autoReconnect`, `reconnectInterval`) |
 | `ActionCallback` | `(args: string[], respond: (success: boolean) => void) => void` |
 | `Panteao` / `Panteão` | Main client class alias (also exported as `BdiClient`) |
 
@@ -232,7 +241,7 @@ The package ships with **full TypeScript types** built-in — no need to install
 import { Panteao } from 'panteao-ts';
 
 // Spawns the native binary automatically
-const engine = new Panteao({ project: './project.jcm' });
+const engine = new Panteao({ project: './project.jcm', dev: true });
 await engine.connect();
 
 engine.registerAction('turn_on_ac', (args: string[], respond: (success: boolean) => void) => {
@@ -259,7 +268,7 @@ Boilerplate code:
 use panteao::Panteao;
 
 fn main() {
-    let mut engine = Panteao::new("127.0.0.1:0");
+    let mut engine = Panteao::connect_with_project("127.0.0.1:0", Some("./project.jcm"), true).unwrap();
     engine.connect().unwrap();
 
     engine.registerAction("turn_on_ac", |sender, receiver, content| {
@@ -291,7 +300,7 @@ import br.com.kkphoenix.jason.ipc.sdk.Panteao;
 
 public class Main {
     public static void main(String[] args) throws Exception {
-        Panteao engine = new Panteao("127.0.0.1", 0);
+        Panteao engine = new Panteao("127.0.0.1", 0, "./project.jcm", true);
         engine.connect();
 
         engine.registerAction("turn_on_ac", (sender, receiver, content) -> {
@@ -318,7 +327,7 @@ Boilerplate code:
 import br.com.kkphoenix.jason.ipc.sdk.Panteao
 
 fun main() {
-    val engine = Panteao("127.0.0.1", 0)
+    val engine = Panteao("127.0.0.1", 0, "./project.jcm", true)
     engine.connect()
 
     engine.registerAction("turn_on_ac") { sender, receiver, content ->
@@ -344,7 +353,7 @@ Boilerplate code:
 import br.com.kkphoenix.jason.ipc.sdk.Panteao
 
 object Main extends App {
-  val engine = new Panteao("127.0.0.1", 0)
+  val engine = new Panteao("127.0.0.1", 0, "./project.jcm", true)
   engine.connect()
 
   engine.registerAction("turn_on_ac", (sender, receiver, content) => {
@@ -409,7 +418,7 @@ int main() {
     panteao::Panteao engine;
     
     // Spawns the native binary automatically
-    engine.connect("127.0.0.1", 0, "./project.jcm");
+    engine.connect("127.0.0.1", 0, "./project.jcm", true);
 
     engine.registerAction("turn_on_ac", [&engine](const std::vector<std::string>& args, std::function<void(bool)> respond) {
         std::cout << "Action received! Turning on AC." << std::endl;
@@ -443,7 +452,7 @@ using Panteao.Sdk;
 class Program {
     static void Main() {
         // Spawns the native binary automatically
-        using var engine = new Panteao.Sdk.Panteao("127.0.0.1", 0, "./project.jcm");
+        using var engine = new Panteao.Sdk.Panteao("127.0.0.1", 0, "./project.jcm", true);
 
         engine.RegisterAction("turn_on_ac", (args, respond) => {
             Console.WriteLine("Action received! Turning on AC.");
@@ -473,7 +482,7 @@ Boilerplate code:
 import 'package:panteao/panteao.dart';
 
 void main() async {
-  final engine = Panteao(host: '127.0.0.1', port: 0, project: './project.jcm');
+  final engine = Panteao(host: '127.0.0.1', port: 0, project: './project.jcm', dev: true);
   await engine.connect();
 
   engine.registerAction('turn_on_ac', (args, respond) {
@@ -500,7 +509,7 @@ Boilerplate code:
 <?php
 use Panteao\Panteao;
 
-$engine = new Panteao("127.0.0.1", 0);
+$engine = new Panteao("127.0.0.1", 0, "./project.jcm", true);
 $engine->connect();
 
 $engine->registerAction("turn_on_ac", function($sender, $receiver, $content) use ($engine) {
@@ -525,7 +534,7 @@ Boilerplate code:
 ```ruby
 require 'panteao'
 
-engine = Panteao::Panteao.new('127.0.0.1', 0)
+engine = Panteao::Panteao.new('127.0.0.1', 0, project: './project.jcm', dev: true)
 engine.connect
 
 engine.registerAction("turn_on_ac") do |sender, receiver, content|
@@ -550,7 +559,7 @@ Boilerplate code:
 ```swift
 import Panteao
 
-let engine = Panteao(host: "127.0.0.1", port: 0)
+let engine = Panteao(host: "127.0.0.1", port: 0, project: "./project.jcm", dev: true)
 engine.connect()
 
 engine.registerAction("turn_on_ac") { sender, receiver, content in
@@ -603,7 +612,7 @@ Boilerplate code:
 ```R
 library(panteao)
 
-engine <- Panteao$new(host = "127.0.0.1", port = 0)
+engine <- Panteao$new(host = "127.0.0.1", port = 0, project = "./project.jcm", dev = TRUE)
 engine$connect()
 
 engine$registerAction("turn_on_ac", function(sender, receiver, content) {

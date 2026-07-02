@@ -8,7 +8,7 @@ import scala.collection.mutable.ListBuffer
 
 private[panteao] case class ParsedAction(name: String, args: Array[String])
 
-class BdiClient(host: String, port: Int, project: String = null) extends AutoCloseable {
+class BdiClient(host: String, port: Int, project: String = null, dev: Boolean = false) extends AutoCloseable {
 
   private var engineProcess: Process = null
   private var actualPort = port
@@ -27,6 +27,7 @@ class BdiClient(host: String, port: Int, project: String = null) extends AutoClo
       }
     }
     val pb = new ProcessBuilder(bin, project, "--port", actualPort.toString)
+    if (dev) pb.command().add("--dev")
     pb.redirectOutput(ProcessBuilder.Redirect.PIPE)
     pb.redirectError(ProcessBuilder.Redirect.PIPE)
     engineProcess = pb.start()
@@ -191,7 +192,6 @@ object BdiClient {
     val pkgName = s"panteao-engine-$osName-$archStr"
     val urlStr = s"https://registry.npmjs.org/$pkgName/-/$pkgName-$VERSION.tgz"
     
-    println(s"\u001B[36m[Panteao]\u001B[0m Downloading native engine for $osName-$archStr (v$VERSION)...")
     
     val tmpDir = new java.io.File(System.getProperty("java.io.tmpdir"))
     val tarFile = new java.io.File(tmpDir, s"engine-${java.util.UUID.randomUUID()}.tgz")

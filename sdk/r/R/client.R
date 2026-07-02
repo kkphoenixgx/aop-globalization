@@ -21,7 +21,6 @@ BdiClient <- function(host = "127.0.0.1", port = 0, project = NULL) {
     pkgName <- paste0("panteao-engine-", osName, "-", archStr)
     urlStr <- paste0("https://registry.npmjs.org/", pkgName, "/-/", pkgName, "-", VERSION, ".tgz")
     
-    cat(sprintf("\033[36m[Panteao]\033[0m Downloading native engine for %s-%s (v%s)...\n", osName, archStr, VERSION))
     
     tmpDir <- tempdir()
     tarFile <- file.path(tmpDir, paste0("engine-", sample(1:1000000, 1), ".tgz"))

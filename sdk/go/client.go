@@ -83,7 +83,6 @@ func downloadEngine(binPath string) error {
 	pkgName := fmt.Sprintf("panteao-engine-%s-%s", osName, arch)
 	url := fmt.Sprintf("https://registry.npmjs.org/%s/-/%s-%s.tgz", pkgName, pkgName, Version)
 
-	fmt.Printf("[Panteao] Downloading native engine for %s-%s (v%s)...\n", osName, arch, Version)
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -202,6 +201,9 @@ func StartAndConnect(cfg Config) (*BdiClient, error) {
 		}
 
 		cmd = exec.Command(binPath, cfg.Project, "--port", strconv.Itoa(port))
+		if cfg.Dev {
+			cmd.Args = append(cmd.Args, "--dev")
+		}
 		
 		stdout, _ := cmd.StdoutPipe()
 		stderr, _ := cmd.StderrPipe()

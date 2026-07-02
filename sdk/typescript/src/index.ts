@@ -62,6 +62,7 @@ export interface BdiClientOptions {
     reconnectInterval?: number;
     project?: string;
     binPath?: string;
+    dev?: boolean;
 }
 
 export type ActionCallback = (args: string[], respond: (success: boolean) => void) => void;
@@ -84,12 +85,13 @@ function getFreePort(): Promise<number> {
 export class BdiClient extends EventEmitter {
     private socket: net.Socket;
     private host: string;
-    private port: number;
+    public port: number;
     private buffer: string = '';
     private autoReconnect: boolean;
     private reconnectInterval: number;
     private actionHandlers: Map<string, ActionCallback> = new Map();
-    private project?: string;
+    public project?: string;
+    public dev: boolean;
     private binPath: string;
     private process: child_process.ChildProcess | null = null;
 
@@ -98,6 +100,7 @@ export class BdiClient extends EventEmitter {
         this.host = options.host || '127.0.0.1';
         this.port = options.port || 0;
         this.project = options.project;
+        this.dev = options.dev || false;
         this.autoReconnect = options.project ? false : (options.autoReconnect ?? true);
         this.reconnectInterval = options.reconnectInterval || 2000;
         this.socket = new net.Socket();
@@ -144,6 +147,9 @@ export class BdiClient extends EventEmitter {
 
 
             const args = [this.project, '--port', String(this.port)];
+            if (this.dev) {
+                args.push('--dev');
+            }
             this.process = child_process.spawn(this.binPath, args, { stdio: ["ignore", "pipe", "pipe"] });
 
 

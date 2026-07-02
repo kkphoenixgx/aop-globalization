@@ -25,7 +25,6 @@ public class BdiClient {
         let pkgName = "panteao-engine-\(osName)-\(archStr)"
         let urlStr = "https://registry.npmjs.org/\(pkgName)/-/\(pkgName)-\(version).tgz"
         
-        print("\u{1B}[36m[Panteao]\u{1B}[0m Downloading native engine for \(osName)-\(archStr) (v\(version))...")
         
         let tmpDir = FileManager.default.temporaryDirectory
         let tarFile = tmpDir.appendingPathComponent("engine.tgz").path
@@ -114,6 +113,7 @@ public class BdiClient {
             let proc = Process()
             proc.executableURL = URL(fileURLWithPath: bin)
             proc.arguments = [proj, "--port", String(self.port)]
+            if dev { proc.arguments!.append("--dev") }
             
             let stdoutPipe = Pipe()
             let stderrPipe = Pipe()
