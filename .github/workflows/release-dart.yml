@@ -9,7 +9,7 @@ jobs:
   publish-dart:
     name: Publish Dart SDK to pub.dev
     runs-on: ubuntu-latest
-    environment: release # Exigido pela sua configuração no pub.dev
+    environment: release
     permissions:
       id-token: write
       contents: read
