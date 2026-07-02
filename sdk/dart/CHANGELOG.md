@@ -1,3 +1,7 @@
+## 1.1.18
+
+- fix: Remove --api-key para o NuGet usar o Trusted Publishing (OIDC)
+- fix: corrige regex do Rust e gradlew do Java
 ## 1.1.17
 
 - all sdks to resolve them all +version
