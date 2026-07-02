@@ -252,12 +252,13 @@ jobs:
 
       - name: NuGet Login
         uses: NuGet/login@v1
+        id: nuget-login
         with:
           user: kkphoenix
 
       - name: Publish C# SDK
         working-directory: sdk/csharp
-        run: dotnet nuget push out/*.nupkg --skip-duplicate
+        run: dotnet nuget push out/*.nupkg --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
         continue-on-error: true
 
       - name: Publish Rust SDK to crates.io
