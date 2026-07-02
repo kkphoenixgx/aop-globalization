@@ -1,3 +1,7 @@
+## 1.1.24
+
+- dev mind spector support +version
+- continue-on-error: false
 ## 1.1.23
 
 - NuGet com passagem explicita

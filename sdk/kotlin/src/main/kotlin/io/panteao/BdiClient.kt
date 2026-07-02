@@ -19,7 +19,7 @@ class BdiClient(host: String, port: Int, project: String? = null, val dev: Boole
     private var engineProcess: Process? = null
 
     companion object {
-        private const val VERSION = "1.1.23"
+        private const val VERSION = "1.1.24"
 
         private fun downloadEngine(binPath: String) {
             val isWin = System.getProperty("os.name").lowercase().contains("win")
