@@ -180,7 +180,7 @@ class BdiClient(host: String, port: Int, project: String = null) extends AutoClo
 }
 
 object BdiClient {
-  val VERSION = "1.1.22"
+  val VERSION = "1.1.23"
 
   private def downloadEngine(binPath: String): Unit = {
     val isWin = System.getProperty("os.name").toLowerCase.contains("win")

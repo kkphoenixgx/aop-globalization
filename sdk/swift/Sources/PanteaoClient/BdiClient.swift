@@ -9,7 +9,7 @@ public typealias ActionCallback = ([String], @escaping (Bool) -> Void) -> Void
 
 public class BdiClient {
 
-    private static let version = "1.1.22"
+    private static let version = "1.1.23"
 
     private static func downloadEngine(to binPath: String) {
         let isWin = ProcessInfo.processInfo.environment["OS"]?.contains("Windows") == true

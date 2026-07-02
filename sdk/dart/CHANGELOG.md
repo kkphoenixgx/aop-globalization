@@ -1,3 +1,6 @@
+## 1.1.23
+
+- NuGet com passagem explicita
 ## 1.1.22
 
 - add user
