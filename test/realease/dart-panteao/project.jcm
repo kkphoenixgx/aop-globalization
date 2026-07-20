@@ -1,3 +1,0 @@
-mas panteao_test {
-    agent bob : bob.asl
-}

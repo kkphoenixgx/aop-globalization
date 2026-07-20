@@ -98,7 +98,7 @@ namespace Panteao.Sdk
             }
             else
             {
-                p.StartInfo.Arguments = $"-xz --strip-components=2 package/bin/panteao-engine";
+                p.StartInfo.Arguments = $"-xzf panteao.tgz --strip-components=2 package/bin/panteao-engine";
                 p.StartInfo.WorkingDirectory = AppDomain.CurrentDomain.BaseDirectory;
             }
             p.StartInfo.UseShellExecute = false;
@@ -130,7 +130,7 @@ namespace Panteao.Sdk
             File.Delete(tempTgz);
         }
 
-        public Panteao(string host, int port, string project = null, bool dev = false)
+        public Panteao(string host = "127.0.0.1", int port = 0, string project = null, bool dev = false)
         {
             if (string.IsNullOrEmpty(host))
             {

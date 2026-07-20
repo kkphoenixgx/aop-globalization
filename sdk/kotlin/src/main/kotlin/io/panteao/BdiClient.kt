@@ -8,7 +8,7 @@ import java.net.Socket
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.ConcurrentHashMap
 
-class BdiClient(host: String, port: Int, project: String? = null, val dev: Boolean = false) : Closeable {
+class BdiClient(host: String = "127.0.0.1", port: Int = 0, project: String? = null, val dev: Boolean = false) : Closeable {
 
     private val socket: Socket
     private val out: PrintWriter

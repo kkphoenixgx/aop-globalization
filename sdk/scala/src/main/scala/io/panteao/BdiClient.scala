@@ -8,7 +8,7 @@ import scala.collection.mutable.ListBuffer
 
 private[panteao] case class ParsedAction(name: String, args: Array[String])
 
-class BdiClient(host: String, port: Int, project: String = null, dev: Boolean = false) extends AutoCloseable {
+class BdiClient(host: String = "127.0.0.1", port: Int = 0, project: String = null, dev: Boolean = false) extends AutoCloseable {
 
   private var engineProcess: Process = null
   private var actualPort = port

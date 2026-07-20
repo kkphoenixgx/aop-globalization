@@ -1,3 +1,0 @@
-mas test_canvas {
-    agent mover_agent : test_canvas.asl
-}

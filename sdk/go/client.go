@@ -161,7 +161,7 @@ func getFreePort() (int, error) {
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
-func StartAndConnect(cfg Config) (*BdiClient, error) {
+func StartAndConnect(cfg Config) (*BdiClient, error) {\n\tif cfg.Host == \"\" { cfg.Host = \"127.0.0.1\" }\n
 	var cmd *exec.Cmd
 	host := cfg.Host
 	if host == "" {

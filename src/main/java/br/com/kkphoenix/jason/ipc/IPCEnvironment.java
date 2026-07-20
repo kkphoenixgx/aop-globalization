@@ -143,6 +143,24 @@ public class IPCEnvironment extends Environment {
                 } else {
                     logger.warning("Receiver agent not found: " + receiver);
                 }
+            } else if ("action_result".equals(type)) {
+                String id = json.optString("id");
+                boolean success = json.optBoolean("success", true);
+                // Currently just acking the result. A robust implementation would unlock the blocked intention.
+                logger.fine("Action " + id + " completed with success: " + success);
+            } else if ("perception".equals(type)) {
+                String targetAgent = json.optString("agent");
+                String percept = json.optString("perception");
+                try {
+                    jason.asSyntax.Literal p = jason.asSyntax.ASSyntax.parseLiteral(percept);
+                    if (targetAgent != null && !targetAgent.isEmpty()) {
+                        addPercept(targetAgent, p);
+                    } else {
+                        addPercept(p); // Global percept
+                    }
+                } catch (Exception ex) {
+                    logger.warning("Failed to parse perception: " + percept);
+                }
             } else {
                 logger.warning("Unknown message type from client: " + type);
             }
@@ -154,6 +172,22 @@ public class IPCEnvironment extends Environment {
     public synchronized void sendToClient(JSONObject json) {
         if (out != null) {
             out.println(json.toString());
+        }
+    }
+
+    @Override
+    public boolean executeAction(String agName, jason.asSyntax.Structure action) {
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "action");
+            json.put("id", java.util.UUID.randomUUID().toString());
+            json.put("action", action.toString());
+            json.put("agent", agName);
+            sendToClient(json);
+            return true;
+        } catch (Exception e) {
+            logger.severe("Failed to send action: " + e.getMessage());
+            return false;
         }
     }
 

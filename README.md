@@ -104,7 +104,7 @@ By decoupling the cognitive cycle from the application logic, the reasoning engi
 Panteão supports the native Jason Mind Inspector, a web interface to visualize agents' beliefs, goals, and plans in real-time. For security and performance reasons, the web server is completely disabled by default in production. To enable it during development, you must pass the `dev` flag (e.g. `dev=True` or `dev: true`) to your SDK constructor when spawning the engine:
 
 ```python
-engine = Panteao(host="127.0.0.1", port=0, project="./project.jcm", dev=True)
+engine = Panteao(project="./project.jcm", dev=True)
 ```
 
 When enabled, the engine will print the Mind Inspector URL (typically `http://localhost:3271`) to the console on startup. If you are using an unsupported language or a custom wrapper, you can enable it by setting the `PANTEAO_DEV=1` environment variable (`.env` file) before executing the engine.
@@ -147,16 +147,16 @@ Boilerplate code:
 from panteao import Panteao
 
 # Spawns the native binary automatically
-engine = Panteao(host="127.0.0.1", port=0, project="./project.jcm", dev=True)
+engine = Panteao(project="./project.jcm")
 engine.connect()
 
 def turn_on_ac(args, respond):
     print("Action received! Turning on AC.")
-    engine.send_msg("tell", "sensor", "bob", "ac_status(on)")
+    engine.send_msg("tell", "my_app", "bob", "ac_status(on)")
     respond(True) # Action successful
 
 engine.register_action("turn_on_ac", turn_on_ac)
-engine.send_msg("tell", "sensor", "bob", "temperature(room_1, 35)")
+engine.send_msg("tell", "my_app", "bob", "temperature(room_1, 35)")
 
 # Block until the process is interrupted
 engine.wait()
@@ -178,15 +178,15 @@ package main
 import "github.com/kkphoenixgx/panteao/sdk/go"
 
 func main() {
-	engine := panteao.StartAndConnect(panteao.Config{ Host: "127.0.0.1", Port: 0, Project: "./project.jcm", Dev: true })
+	engine := panteao.StartAndConnect(panteao.Config{ Project: "./project.jcm" })
 	engine.Connect()
 
 	engine.registerAction("turn_on_ac", func(sender, receiver, content string) {
 		print("Action received! Turning on AC.");
-		engine.SendMsg("tell", "sensor", sender, "ac_status(on)")
+		engine.SendMsg("tell", "my_app", sender, "ac_status(on)")
 	})
 
-	engine.SendMsg("tell", "sensor", "bob", "temperature(room_1, 35)")
+	engine.SendMsg("tell", "my_app", "bob", "temperature(room_1, 35)")
 	select {}
 }
 ```
@@ -205,16 +205,16 @@ npm install panteao-js
 const { Panteao } = require('panteao-js');
 
 // Spawns the native binary automatically
-const engine = new Panteao({ project: './project.jcm', dev: true });
+const engine = new Panteao({ project: './project.jcm' });
 engine.connect();
 
 engine.registerAction('turn_on_ac', (args, respond) => {
     console.log("Action received! Turning on AC.");
-    engine.sendMsg('tell', 'sensor', 'bob', 'ac_status(on)');
+    engine.sendMsg('tell', 'my_app', 'bob', 'ac_status(on)');
     respond(true); // Action successful
 });
 
-engine.sendMsg('tell', 'sensor', 'bob', 'temperature(room_1, 35)');
+engine.sendMsg('tell', 'my_app', 'bob', 'temperature(room_1, 35)');
 ```
 
 ### TypeScript
@@ -241,16 +241,16 @@ The package ships with **full TypeScript types** built-in — no need to install
 import { Panteao } from 'panteao-ts';
 
 // Spawns the native binary automatically
-const engine = new Panteao({ project: './project.jcm', dev: true });
+const engine = new Panteao({ project: './project.jcm' });
 await engine.connect();
 
 engine.registerAction('turn_on_ac', (args: string[], respond: (success: boolean) => void) => {
     console.log("Action received! Turning on AC.");
-    engine.sendMsg('tell', 'sensor', 'bob', 'ac_status(on)');
+    engine.sendMsg('tell', 'my_app', 'bob', 'ac_status(on)');
     respond(true); // Action successful
 });
 
-engine.sendMsg('tell', 'sensor', 'bob', 'temperature(room_1, 35)');
+engine.sendMsg('tell', 'my_app', 'bob', 'temperature(room_1, 35)');
 ```
 
 ### Rust
@@ -268,15 +268,15 @@ Boilerplate code:
 use panteao::Panteao;
 
 fn main() {
-    let mut engine = Panteao::connect_with_project("127.0.0.1:0", Some("./project.jcm"), true).unwrap();
+    let mut engine = Panteao::connect(Some("./project.jcm")).unwrap();
     engine.connect().unwrap();
 
     engine.registerAction("turn_on_ac", |sender, receiver, content| {
         print("Action received! Turning on AC.");
-        engine.send_msg("tell", "sensor", sender, "ac_status(on)").unwrap();
+        engine.send_msg("tell", "my_app", sender, "ac_status(on)").unwrap();
     });
 
-    engine.send_msg("tell", "sensor", "bob", "temperature(room_1, 35)").unwrap();
+    engine.send_msg("tell", "my_app", "bob", "temperature(room_1, 35)").unwrap();
     engine.wait();
 }
 ```
@@ -300,15 +300,15 @@ import br.com.kkphoenix.jason.ipc.sdk.Panteao;
 
 public class Main {
     public static void main(String[] args) throws Exception {
-        Panteao engine = new Panteao("127.0.0.1", 0, "./project.jcm", true);
+        Panteao engine = new Panteao("./project.jcm");
         engine.connect();
 
         engine.registerAction("turn_on_ac", (sender, receiver, content) -> {
             System.out.print("Action received! Turning on AC.");
-            engine.sendMsg("tell", "sensor", sender, "ac_status(on)");
+            engine.sendMsg("tell", "my_app", sender, "ac_status(on)");
         });
 
-        engine.sendMsg("tell", "sensor", "bob", "temperature(room_1, 35)");
+        engine.sendMsg("tell", "my_app", "bob", "temperature(room_1, 35)");
     }
 }
 ```
@@ -327,15 +327,15 @@ Boilerplate code:
 import br.com.kkphoenix.jason.ipc.sdk.Panteao
 
 fun main() {
-    val engine = Panteao("127.0.0.1", 0, "./project.jcm", true)
+    val engine = Panteao("./project.jcm")
     engine.connect()
 
     engine.registerAction("turn_on_ac") { sender, receiver, content ->
         print("Action received! Turning on AC.");
-        engine.sendMsg("tell", "sensor", sender, "ac_status(on)")
+        engine.sendMsg("tell", "my_app", sender, "ac_status(on)")
     }
 
-    engine.sendMsg("tell", "sensor", "bob", "temperature(room_1, 35)")
+    engine.sendMsg("tell", "my_app", "bob", "temperature(room_1, 35)")
 }
 ```
 
@@ -353,15 +353,15 @@ Boilerplate code:
 import br.com.kkphoenix.jason.ipc.sdk.Panteao
 
 object Main extends App {
-  val engine = new Panteao("127.0.0.1", 0, "./project.jcm", true)
+  val engine = new Panteao("./project.jcm")
   engine.connect()
 
   engine.registerAction("turn_on_ac", (sender, receiver, content) => {
     print("Action received! Turning on AC.");
-    engine.sendMsg("tell", "sensor", sender, "ac_status(on)")
+    engine.sendMsg("tell", "my_app", sender, "ac_status(on)")
   })
 
-  engine.sendMsg("tell", "sensor", "bob", "temperature(room_1, 35)")
+  engine.sendMsg("tell", "my_app", "bob", "temperature(room_1, 35)")
 }
 ```
 
@@ -381,7 +381,7 @@ Boilerplate code:
 
 void turn_on_ac(const char* sender, const char* receiver, const char* content) {
     print("Action received! Turning on AC.");
-    panteao_send_msg(engine, "tell", "sensor", sender, "ac_status(on)");
+    panteao_send_msg(engine, "tell", "my_app", sender, "ac_status(on)");
 }
 
 int main() {
@@ -389,7 +389,7 @@ int main() {
     panteao_connect(engine);
 
     panteao_registerAction(engine, "turn_on_ac", turn_on_ac);
-    panteao_send_msg(engine, "tell", "sensor", "bob", "temperature(room_1, 35)");
+    panteao_send_msg(engine, "tell", "my_app", "bob", "temperature(room_1, 35)");
     panteao_wait(engine);
     return 0;
 }
@@ -418,17 +418,17 @@ int main() {
     panteao::Panteao engine;
     
     // Spawns the native binary automatically
-    engine.connect("127.0.0.1", 0, "./project.jcm", true);
+    engine.connect("./project.jcm");
 
     engine.registerAction("turn_on_ac", [&engine](const std::vector<std::string>& args, std::function<void(bool)> respond) {
         std::cout << "Action received! Turning on AC." << std::endl;
         
-        engine.sendMsg("tell", "sensor", "bob", "ac_status(on)");
+        engine.sendMsg("tell", "my_app", "bob", "ac_status(on)");
 
         respond(true); // Action successful
     });
 
-    engine.sendMsg("tell", "sensor", "bob", "temperature(room_1, 35)");
+    engine.sendMsg("tell", "my_app", "bob", "temperature(room_1, 35)");
     
     engine.wait();
     return 0;
@@ -452,15 +452,15 @@ using Panteao.Sdk;
 class Program {
     static void Main() {
         // Spawns the native binary automatically
-        using var engine = new Panteao.Sdk.Panteao("127.0.0.1", 0, "./project.jcm", true);
+        using var engine = new Panteao("./project.jcm");
 
         engine.RegisterAction("turn_on_ac", (args, respond) => {
             Console.WriteLine("Action received! Turning on AC.");
-            engine.SendMsg("tell", "sensor", "bob", "ac_status(on)");
+            engine.SendMsg("tell", "my_app", "bob", "ac_status(on)");
             respond(true); // Action successful
         });
 
-        engine.SendMsg("tell", "sensor", "bob", "temperature(room_1, 35)");
+        engine.SendMsg("tell", "my_app", "bob", "temperature(room_1, 35)");
         
         // Block until the process is interrupted
         engine.Wait();
@@ -482,12 +482,12 @@ Boilerplate code:
 import 'package:panteao/panteao.dart';
 
 void main() async {
-  final engine = Panteao(host: '127.0.0.1', port: 0, project: './project.jcm', dev: true);
+  final engine = Panteao(project: './project.jcm');
   await engine.connect();
 
   engine.registerAction('turn_on_ac', (args, respond) {
     print("Action received! Turning on AC.");
-    engine.sendMsg('tell', 'sensor', 'bob', 'ac_status(on)');
+    engine.sendMsg('tell', 'my_app', 'bob', 'ac_status(on)');
     respond(true);
   });
 
@@ -509,15 +509,15 @@ Boilerplate code:
 <?php
 use Panteao\Panteao;
 
-$engine = new Panteao("127.0.0.1", 0, "./project.jcm", true);
+$engine = new Panteao("./project.jcm");
 $engine->connect();
 
 $engine->registerAction("turn_on_ac", function($sender, $receiver, $content) use ($engine) {
     echo "Action received! Turning on AC.";
-    $engine->sendMsg("tell", "sensor", $sender, "ac_status(on)");
+    $engine->sendMsg("tell", "my_app", $sender, "ac_status(on)");
 });
 
-$engine->sendMsg("tell", "sensor", "bob", "temperature(room_1, 35)");
+$engine->sendMsg("tell", "my_app", "bob", "temperature(room_1, 35)");
 $engine->loop();
 ```
 
@@ -534,15 +534,15 @@ Boilerplate code:
 ```ruby
 require 'panteao'
 
-engine = Panteao::Panteao.new('127.0.0.1', 0, project: './project.jcm', dev: true)
+engine = Panteao::Panteao.new(project: './project.jcm')
 engine.connect
 
 engine.registerAction("turn_on_ac") do |sender, receiver, content|
   puts "Action received! Turning on AC.";
-  engine.send_msg('tell', 'sensor', sender, 'ac_status(on)')
+  engine.send_msg('tell', 'my_app', sender, 'ac_status(on)')
 end
 
-engine.send_msg('tell', 'sensor', 'bob', 'temperature(room_1, 35)')
+engine.send_msg('tell', 'my_app', 'bob', 'temperature(room_1, 35)')
 engine.loop
 ```
 
@@ -559,15 +559,15 @@ Boilerplate code:
 ```swift
 import Panteao
 
-let engine = Panteao(host: "127.0.0.1", port: 0, project: "./project.jcm", dev: true)
+let engine = Panteao(project: "./project.jcm")
 engine.connect()
 
 engine.registerAction("turn_on_ac") { sender, receiver, content in
     print("Action received! Turning on AC.");
-    engine.sendMsg("tell", sender: "sensor", receiver: sender, content: "ac_status(on)")
+    engine.sendMsg("tell", sender: "my_app", receiver: sender, content: "ac_status(on)")
 }
 
-engine.sendMsg("tell", sender: "sensor", receiver: "bob", content: "temperature(room_1, 35)")
+engine.sendMsg("tell", sender: "my_app", receiver: "bob", content: "temperature(room_1, 35)")
 ```
 
 ### Objective-C
@@ -590,10 +590,10 @@ int main() {
 
         [engine registerAction:@"turn_on_ac" withBlock:^(NSString *sender, NSString *receiver, NSString *content) {
             NSLog(@"Action received! Turning on AC.");
-            [engine sendMsg:@"tell" sender:@"sensor" receiver:sender content:@"ac_status(on)"];
+            [engine sendMsg:@"tell" sender:@"my_app" receiver:sender content:@"ac_status(on)"];
         }];
 
-        [engine sendMsg:@"tell" sender:@"sensor" receiver:@"bob" content:@"temperature(room_1, 35)"];
+        [engine sendMsg:@"tell" sender:@"my_app" receiver:@"bob" content:@"temperature(room_1, 35)"];
     }
     return 0;
 }
@@ -612,15 +612,15 @@ Boilerplate code:
 ```R
 library(panteao)
 
-engine <- Panteao$new(host = "127.0.0.1", port = 0, project = "./project.jcm", dev = TRUE)
+engine <- Panteao$new(project = "./project.jcm")
 engine$connect()
 
 engine$registerAction("turn_on_ac", function(sender, receiver, content) {
   cat("Action received! Turning on AC.");
-  engine$send_msg("tell", "sensor", sender, "ac_status(on)")
+  engine$send_msg("tell", "my_app", sender, "ac_status(on)")
 })
 
-engine$send_msg("tell", "sensor", "bob", "temperature(room_1, 35)")
+engine$send_msg("tell", "my_app", "bob", "temperature(room_1, 35)")
 engine$loop()
 ```
 
@@ -646,10 +646,10 @@ turn_on_ac() {
     local receiver="$2"
     local content="$3"
     echo "Action received! Turning on AC.";
-    panteao_send_msg "tell" "sensor" "$sender" "ac_status(on)"
+    panteao_send_msg "tell" "my_app" "$sender" "ac_status(on)"
 }
 
-panteao_send_msg "tell" "sensor" "bob" "temperature(room_1, 35)"
+panteao_send_msg "tell" "my_app" "bob" "temperature(room_1, 35)"
 panteao_wait
 ```
 
