@@ -1,3 +1,6 @@
+## 1.1.28
+
+- build engines +version
 ## 1.1.27
 
 - Solving [Panteão Error] wrong bash flag
