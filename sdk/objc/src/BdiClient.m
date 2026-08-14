@@ -35,7 +35,7 @@ static int get_free_port() {
     return ntohs(addr.sin_port);
 }
 
-static NSString *VERSION = @"1.1.24";
+static NSString *VERSION = @"1.1.26";
 
 static void download_engine(char *bin_path) {
     NSString *osName = @"darwin";

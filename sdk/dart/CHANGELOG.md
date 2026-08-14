@@ -1,3 +1,9 @@
+## 1.1.26
+
+- /n bug in java sdk +version
+- update +version
+- new tests and default args to some sdks
+- <- true to talaria agent
 ## 1.1.24
 
 - dev mind spector support +version

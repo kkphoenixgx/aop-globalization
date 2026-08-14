@@ -76,7 +76,7 @@ namespace Panteao.Sdk
                             System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX) ? "darwin" : "linux";
             string arch = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture == System.Runtime.InteropServices.Architecture.Arm64 ? "arm64" : "x64";
             
-            string sdkVersion = "1.1.24"; // To be bumped by CI
+            string sdkVersion = "1.1.26"; // To be bumped by CI
             string pkgName = $"panteao-engine-{osName}-{arch}";
             string url = $"https://registry.npmjs.org/{pkgName}/-/{pkgName}-{sdkVersion}.tgz";
             
