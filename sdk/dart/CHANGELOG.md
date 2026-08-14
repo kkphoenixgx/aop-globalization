@@ -1,3 +1,6 @@
+## 1.1.29
+
+- include resources and jason athena  +version
 ## 1.1.28
 
 - build engines +version
