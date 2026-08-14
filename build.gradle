@@ -52,6 +52,7 @@ graalvmNative {
             buildArgs.add('--no-fallback')
             buildArgs.add('--enable-url-protocols=http,https')
             buildArgs.add('-march=compatibility')
+            buildArgs.add('-H:IncludeResources=.*\\.properties$|.*\\.txt$|.*\\.asl$|.*\\.mas2j$|.*\\.xml$')
         }
     }
 }
