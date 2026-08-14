@@ -8,6 +8,16 @@
     "pattern":"\\Qasl/kqmlPlans.asl\\E"
   }, {
     "pattern":"\\Qlogging.properties\\E"
+  }, {
+    "pattern":"\\Qapplication.properties\\E"
+  }, {
+    "pattern":"\\Qtraduction-context.txt\\E"
+  }, {
+    "pattern":"\\Qdelegation-context.txt\\E"
+  }, {
+    "pattern":"\\Qneed_act-context.txt\\E"
+  }, {
+    "pattern":"\\Qevolution-context.txt\\E"
   }]},
   "bundles":[]
 }

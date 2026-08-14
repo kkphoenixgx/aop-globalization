@@ -125,7 +125,11 @@ public class BdiClient implements AutoCloseable {
         return binName;
     }
 
-    public BdiClient(String project) throws Exception {\n        this("127.0.0.1", 0, project, false);\n    }\n\n    public BdiClient(String host, int port) throws Exception {
+    public BdiClient(String project) throws Exception {
+        this("127.0.0.1", 0, project, false);
+    }
+
+    public BdiClient(String host, int port) throws Exception {
         this(host, port, null);
     }
 

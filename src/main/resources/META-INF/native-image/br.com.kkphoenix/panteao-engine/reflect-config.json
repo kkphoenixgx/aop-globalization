@@ -1,5 +1,29 @@
 [
 {
+  "name":"br.com.kkphoenix.services.ollamaService.classes.IAGenerateRequest",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true
+},
+{
+  "name":"br.com.kkphoenix.services.ollamaService.classes.IAGenerateResponse",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true
+},
+{
+  "name":"br.com.kkphoenix.services.ollamaService.classes.OllamaOptions",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true
+},
+{
+  "name":"br.com.kkphoenix.services.ollamaService.classes.TranslationResult",
+  "allDeclaredFields":true,
+  "allDeclaredMethods":true,
+  "allDeclaredConstructors":true
+},
+{
   "name":"jason.asSemantics.Agent",
   "queryAllPublicMethods":true,
   "methods":[{"name":"<init>","parameterTypes":[] }]

@@ -1736,6 +1736,13 @@
         "allPublicMethods": true
     },
     {
+        "name": "br.com.kkphoenix.TestJackson",
+        "allDeclaredConstructors": true,
+        "allPublicConstructors": true,
+        "allDeclaredMethods": true,
+        "allPublicMethods": true
+    },
+    {
         "name": "br.com.kkphoenix.util.FileUtil",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
