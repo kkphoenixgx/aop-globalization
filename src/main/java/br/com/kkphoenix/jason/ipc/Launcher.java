@@ -25,6 +25,19 @@ public class Launcher {
             if (in != null) {
                 java.util.logging.LogManager.getLogManager().readConfiguration(in);
             }
+            java.util.logging.Logger rootLogger = java.util.logging.Logger.getLogger("");
+            for (java.util.logging.Handler handler : rootLogger.getHandlers()) {
+                rootLogger.removeHandler(handler);
+            }
+            java.util.logging.StreamHandler sysOutHandler = new java.util.logging.StreamHandler(System.out, new java.util.logging.SimpleFormatter()) {
+                @Override
+                public synchronized void publish(java.util.logging.LogRecord record) {
+                    super.publish(record);
+                    flush();
+                }
+            };
+            sysOutHandler.setLevel(java.util.logging.Level.ALL);
+            rootLogger.addHandler(sysOutHandler);
         } 
         catch (Exception e) { }
     }
