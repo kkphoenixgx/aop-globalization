@@ -1,3 +1,6 @@
+## 1.1.27
+
+- Solving [Panteão Error] wrong bash flag
 ## 1.1.26
 
 - /n bug in java sdk +version
