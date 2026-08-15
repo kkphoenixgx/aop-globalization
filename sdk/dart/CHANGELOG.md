@@ -1,3 +1,7 @@
+## 1.1.30
+
+- broadcast  +version
+- essa engine nunca deveria estar aí para começo de conversa
 ## 1.1.29
 
 - include resources and jason athena  +version
