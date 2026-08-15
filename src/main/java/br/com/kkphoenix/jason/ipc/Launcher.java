@@ -25,19 +25,7 @@ public class Launcher {
             if (in != null) {
                 java.util.logging.LogManager.getLogManager().readConfiguration(in);
             }
-            java.util.logging.Logger rootLogger = java.util.logging.Logger.getLogger("");
-            for (java.util.logging.Handler handler : rootLogger.getHandlers()) {
-                rootLogger.removeHandler(handler);
-            }
-            java.util.logging.StreamHandler sysOutHandler = new java.util.logging.StreamHandler(System.out, new java.util.logging.SimpleFormatter()) {
-                @Override
-                public synchronized void publish(java.util.logging.LogRecord record) {
-                    super.publish(record);
-                    flush();
-                }
-            };
-            sysOutHandler.setLevel(java.util.logging.Level.ALL);
-            rootLogger.addHandler(sysOutHandler);
+
         } 
         catch (Exception e) { }
     }
@@ -117,10 +105,8 @@ public class Launcher {
             tempLogProps = File.createTempFile("panteao_log_", ".properties");
             tempLogProps.deleteOnExit();
             try (FileWriter writer = new FileWriter(tempLogProps)) {
-                writer.write("handlers = java.util.logging.ConsoleHandler\n");
+                writer.write("handlers = br.com.kkphoenix.jason.ipc.PanteaoHandler\n");
                 writer.write(".level = INFO\n");
-                writer.write("java.util.logging.ConsoleHandler.level = INFO\n");
-                writer.write("java.util.logging.ConsoleHandler.formatter = java.util.logging.SimpleFormatter\n");
             }
         } catch (IOException e) {
             logger.warning("Failed to create temporary logging configuration: " + e.getMessage());
@@ -256,21 +242,24 @@ public class Launcher {
                 sourcePaths.add(relPathStr);
             }
         }
+            if (!configs.isEmpty()) {
+                sb.append("\n");
+            }
 
         sb.append("    agents:\n");
 
         // Inject the Talaria gateway agent when running in IPC mode
         if (hasPort) {
-            sb.append("        talaria talaria.asl agentArchClass br.com.kkphoenix.jason.ipc.TalariaAgArch;\n");
+            sb.append("        talaria_outgate talaria_outgate.asl agentArchClass br.com.kkphoenix.jason.ipc.TalariaAgArch;\n");
             try {
-                File talariaAslFile = new File(jcmFile.getParentFile(), "talaria.asl");
+                File talariaAslFile = new File(jcmFile.getParentFile(), "talaria_outgate.asl");
                 if (!talariaAslFile.exists()) {
                     try (java.io.FileWriter aslWriter = new java.io.FileWriter(talariaAslFile)) {
-                        aslWriter.write("!start.\n+!start <- true.\n");
+                        aslWriter.write("// Gateway agent used internally by Panteão to route messages out\n");
                     }
                 }
             } catch (Exception e) {
-                logger.warning("Could not dynamically write talaria.asl: " + e.getMessage());
+                logger.warning("Could not dynamically write talaria_outgate.asl: " + e.getMessage());
             }
         }
 

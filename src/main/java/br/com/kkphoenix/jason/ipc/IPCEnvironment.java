@@ -137,11 +137,22 @@ public class IPCEnvironment extends Environment {
                 
                 // Although Jason message class doesn't store timeout natively, we keep parsing it as per KQML.
 
-                jason.infra.local.LocalAgArch arch = jason.infra.centralised.RunCentralisedMAS.getRunner().getAg(receiver);
-                if (arch != null) {
-                    arch.getTS().getC().addMsg(msg);
+                if ("all".equalsIgnoreCase(receiver)) {
+                    for (String agName : jason.infra.centralised.RunCentralisedMAS.getRunner().getAgs().keySet()) {
+                        jason.infra.local.LocalAgArch arch = jason.infra.centralised.RunCentralisedMAS.getRunner().getAg(agName);
+                        if (arch != null) {
+                            jason.asSemantics.Message bcastMsg = new jason.asSemantics.Message(msg);
+                            bcastMsg.setReceiver(agName);
+                            arch.getTS().getC().addMsg(bcastMsg);
+                        }
+                    }
                 } else {
-                    logger.warning("Receiver agent not found: " + receiver);
+                    jason.infra.local.LocalAgArch arch = jason.infra.centralised.RunCentralisedMAS.getRunner().getAg(receiver);
+                    if (arch != null) {
+                        arch.getTS().getC().addMsg(msg);
+                    } else {
+                        logger.warning("Receiver agent not found: " + receiver);
+                    }
                 }
             } else if ("action_result".equals(type)) {
                 String id = json.optString("id");

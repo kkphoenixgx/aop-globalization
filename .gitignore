@@ -1,18 +1,13 @@
 .context/
 .agents/
 .gradle/
-build/*
-!build/libs/
-!build/libs/*.jar
-!build/libs/jason-ipc-all.jar
+build/
 graalvm/
 .vscode/
 .idea/
 
 # artefatos compilados / executáveis
-bin/panteao-engine
-bin/panteao-engine.exe
-bin/panteao-engine.bak
+bin/panteao-engine*
 bin/*.so
 bin/**/*.so
 **/*.so
@@ -23,6 +18,8 @@ bin/**/*.so
 *.log
 *.tmp
 *.bak
+test/**/build/
+bin/cpp/client
 
 # binários grandes usados apenas localmente
 **/scala-cli

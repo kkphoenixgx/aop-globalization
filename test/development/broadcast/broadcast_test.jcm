@@ -1,0 +1,5 @@
+mas broadcast_test {
+    agent alice: broadcast_agent.asl
+    agent bob: broadcast_agent.asl
+    agent charlie: broadcast_agent.asl
+}

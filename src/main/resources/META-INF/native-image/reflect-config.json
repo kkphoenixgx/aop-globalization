@@ -84,7 +84,21 @@
         "allPublicMethods": true
     },
     {
+        "name": "br.com.kkphoenix.jason.ipc.PanteaoFormatter",
+        "allDeclaredConstructors": true,
+        "allPublicConstructors": true,
+        "allDeclaredMethods": true,
+        "allPublicMethods": true
+    },
+    {
         "name": "br.com.kkphoenix.jason.ipc.ArchitectureRegistry",
+        "allDeclaredConstructors": true,
+        "allPublicConstructors": true,
+        "allDeclaredMethods": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "br.com.kkphoenix.jason.ipc.PanteaoHandler",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
         "allDeclaredMethods": true,
@@ -1730,13 +1744,6 @@
     },
     {
         "name": "jason.stdlib.act",
-        "allDeclaredConstructors": true,
-        "allPublicConstructors": true,
-        "allDeclaredMethods": true,
-        "allPublicMethods": true
-    },
-    {
-        "name": "br.com.kkphoenix.TestJackson",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
         "allDeclaredMethods": true,
