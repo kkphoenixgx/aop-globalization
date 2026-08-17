@@ -1,3 +1,6 @@
+## 1.1.32
+
+- Atualização do athena +version
 ## 1.1.31
 
 - athena version upgrade +version

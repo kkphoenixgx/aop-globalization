@@ -1,3 +1,3 @@
 name := "panteao-client"
-version := "1.1.31"
+version := "1.1.32"
 scalaVersion := "3.3.0"
