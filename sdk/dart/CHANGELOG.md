@@ -1,3 +1,6 @@
+## 1.1.33
+
+- concurrency error in Athena +version
 ## 1.1.32
 
 - Atualização do athena +version
