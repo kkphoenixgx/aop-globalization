@@ -41,7 +41,7 @@ static void readLogs(int fd) {
     }
 }
 
-Panteao::Panteao() : socketFd(-1), enginePid(-1), running(false), sdkVersion("1.1.36") {}
+Panteao::Panteao() : socketFd(-1), enginePid(-1), running(false), sdkVersion("1.1.37") {}
 
 Panteao::~Panteao() {
     close();

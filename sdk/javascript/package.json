@@ -1,6 +1,6 @@
 {
   "name": "panteao-js",
-  "version": "1.1.36",
+  "version": "1.1.37",
   "description": "JavaScript client for the Panteao BDI agent engine",
   "main": "index.js",
   "type": "commonjs",
