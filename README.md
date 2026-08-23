@@ -1,6 +1,6 @@
 # Panteão BDI - MAS Globalization
 
-Panteão is a framework that envelops the Jason interpreter, that decouples BDI cognitive logic. The big difference of this framework is the always native support to JaCaMo, we are not recreating the wheel, we are just exposing this World to everyone. This framework just envelops, solve envelop problems and create enviromet solutions. The BDI cognitive cycle runs in a dedicated engine process while applications communicate with the agents using the Panteao SDK for their language.
+Panteão is a framework that envelops the Jason interpreter to decouple BDI cognitive logic. The primary advantage of this framework is its native support for JaCaMo—we are not reinventing the wheel, but rather exposing the BDI world to every programming language. This framework acts as an envelope, solving encapsulation problems and providing robust environment solutions. The BDI cognitive cycle runs in a dedicated engine process while applications communicate with the agents using the Panteao SDK for their language.
 
 ## Running the Engine
 
@@ -20,7 +20,7 @@ Parameters:
 
 ### Programmatic Integration
 
-For applications that embed the BDI interpreter directly inside their codebase, the library wrappers spawn and manage the background engine process lifecycle automatically when the engine instance is initialized. This enables programmatic control of the engine startup, shutdown, and event mapping.
+For applications that embed the BDI interpreter directly inside their codebase, the library wrappers (SDKs) will automatically download the correct engine binary for your platform and manage the background process lifecycle seamlessly when the engine instance is initialized. This enables programmatic control of the engine startup, shutdown, and event mapping without requiring any manual installation or setup on the host machine.
 
 ## Writing Agent Code
 
@@ -28,7 +28,7 @@ The BDI architecture is configured through JaCaMo files and AgentSpeak plans.
 
 ### JaCaMo Project File
 
-With this framework, I separated Cartago from Jason and Moise, the environment is your system!
+With this framework, CArtAgO is completely decoupled from Jason and Moise—your own system architecture becomes the environment!
 
 Define the Multi-Agent System configuration (ex: `project.jcm`):
 
@@ -62,7 +62,7 @@ Panteão provides native support for the Moise organizational model by including
 ```agentSpeak
 +obligation(Ag, Norm, Goal, DeadLine) : true <-
     .adopt_role(rescue_team);
-    .print("Commiting to goal: ", Goal).
+    .print("Committing to goal: ", Goal).
 ```
 
 ## Speech Acts and ILF
@@ -85,7 +85,11 @@ The supported ILFs are:
 
 ### How is the engine packaged and what is its footprint?
 
-The BDI engine is compiled into a standalone native binary using GraalVM. This native binary is self-contained and does not require a Java Runtime Environment (JRE) to be installed on the host system. The binary is around 68MB in size because it bundles the substrate VM, the Jason interpreter, the Moise parser, the CArtAgO runtime backend, and the TCP socket interface. If your corporate compliance policies prohibit running native binaries, the engine can be executed as a standard Java JAR file using any enterprise-certified JDK.
+The BDI engine is compiled into a standalone native binary using GraalVM. This native binary is self-contained and does not require a Java Runtime Environment (JRE) to be installed on the host system. The binary is around 68MB in size because it bundles the substrate VM, the Jason interpreter, the Moise parser, the CArtAgO runtime backend, and the TCP socket interface. 
+
+**Automatic Engine Provisioning:** You do not need to download, compile, or install the engine manually! When you install an SDK package (e.g., `npm install panteao-js` or `cargo add panteao-client`), the SDK will automatically resolve and download the correct native binary (via packages like `panteao-engine-linux-x64`) for your exact Operating System and CPU Architecture. The SDK then seamlessly spawns and manages this background binary for you.
+
+If your corporate compliance policies prohibit running native binaries, the engine can also be executed as a standard Java JAR file using any enterprise-certified JDK.
 
 ### What is the size of the SDK dependency?
 
@@ -259,25 +263,27 @@ Add the dependency to Cargo.toml:
 
 ```toml
 [dependencies]
-panteao = "1.0"
+panteao-client = "1.1"
 ```
 
 Boilerplate code:
 
 ```rust
-use panteao::Panteao;
+use panteao_client::BdiClient;
 
 fn main() {
-    let mut engine = Panteao::connect(Some("./project.jcm")).unwrap();
-    engine.connect().unwrap();
+    let engine = BdiClient::connect_with_project("127.0.0.1:0", Some("./project.jcm"), false).unwrap();
 
-    engine.registerAction("turn_on_ac", |sender, receiver, content| {
-        print("Action received! Turning on AC.");
-        engine.send_msg("tell", "my_app", sender, "ac_status(on)").unwrap();
+    engine.register_action("turn_on_ac", |args, respond| {
+        println!("Action received! Turning on AC.");
+        // Implement action logic and reply
+        respond(Box::new(|success| {}));
     });
 
     engine.send_msg("tell", "my_app", "bob", "temperature(room_1, 35)").unwrap();
-    engine.wait();
+    
+    // Block until interrupted
+    std::thread::park();
 }
 ```
 
@@ -376,21 +382,29 @@ gcc main.c -lpanteao -o main
 Boilerplate code:
 
 ```c
-#include <panteao.h>
+#include <panteao_client.h>
 #include <stdio.h>
+#include <string.h>
 
-void turn_on_ac(const char* sender, const char* receiver, const char* content) {
-    print("Action received! Turning on AC.");
-    panteao_send_msg(engine, "tell", "my_app", sender, "ac_status(on)");
+void my_callback(const char *name, const char **args, int args_count, const char *action_id, void *context) {
+    PanteaoClient *engine = (PanteaoClient *)context;
+    if (strcmp(name, "turn_on_ac") == 0) {
+        printf("Action received! Turning on AC.\\n");
+        panteao_send_msg(engine, "tell", "my_app", "bob", "ac_status(on)");
+        panteao_send_action_result(engine, action_id, 1);
+    }
 }
 
 int main() {
-    panteao_t* engine = panteao_create("127.0.0.1", 0);
-    panteao_connect(engine);
-
-    panteao_registerAction(engine, "turn_on_ac", turn_on_ac);
-    panteao_send_msg(engine, "tell", "my_app", "bob", "temperature(room_1, 35)");
-    panteao_wait(engine);
+    PanteaoClient engine = {0};
+    panteao_connect_with_project(&engine, "127.0.0.1", 0, "./project.jcm");
+    panteao_register_action_callback(&engine, my_callback, &engine);
+    
+    panteao_send_msg(&engine, "tell", "my_app", "bob", "temperature(room_1, 35)");
+    
+    while(1) {
+        panteao_process_actions(&engine, 1);
+    }
     return 0;
 }
 ```
