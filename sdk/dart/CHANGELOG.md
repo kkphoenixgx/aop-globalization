@@ -1,3 +1,6 @@
+## 1.1.36
+
+- Athena num_predict uhpdate +version
 ## 1.1.35
 
 - New Athena version: Praxis NLP Fallback Engine  +versionb
