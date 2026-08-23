@@ -1,3 +1,6 @@
+## 1.1.34
+
+- Readme and athena new version
 ## 1.1.33
 
 - concurrency error in Athena +version
