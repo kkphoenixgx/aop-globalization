@@ -22,7 +22,8 @@ import (
 
 const Version = "1.1.37"
 
-type ActionCallback func(args []string, respond func(success bool))
+type ActionCallback func(agent string, args []string, respond func(success bool))
+type AnyActionCallback func(agent string, action string, args []string, respond func(success bool))
 
 type Config struct {
 	Host    string
@@ -34,7 +35,8 @@ type Config struct {
 type BdiClient struct {
 	conn     net.Conn
 	cmd      *exec.Cmd
-	handlers map[string]ActionCallback
+	handlers    map[string]ActionCallback
+	onAnyAction AnyActionCallback
 	mu       sync.Mutex
 	running  bool
 }
@@ -312,6 +314,12 @@ func (c *BdiClient) RegisterAction(actionName string, callback ActionCallback) {
 	c.handlers[actionName] = callback
 }
 
+func (c *BdiClient) OnAnyAction(callback AnyActionCallback) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.onAnyAction = callback
+}
+
 func (c *BdiClient) sendActionResult(id string, success bool) {
 	msg := ActionResult{
 		Type:    "action_result",
@@ -341,9 +349,14 @@ func (c *BdiClient) listen(reader *bufio.Reader) {
 			name, args := parseAction(req.Action)
 			c.mu.Lock()
 			handler, ok := c.handlers[name]
+			onAnyAction := c.onAnyAction
 			c.mu.Unlock()
 			if ok {
-				handler(args, func(success bool) {
+				handler(req.Agent, args, func(success bool) {
+					c.sendActionResult(req.ID, success)
+				})
+			} else if onAnyAction != nil {
+				onAnyAction(req.Agent, name, args, func(success bool) {
 					c.sendActionResult(req.ID, success)
 				})
 			} else {
@@ -414,3 +427,7 @@ func (c *BdiClient) Close() error {
 	}
 	return c.conn.Close()
 }
+
+type Panteao = BdiClient
+type Panteão = BdiClient
+

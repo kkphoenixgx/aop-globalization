@@ -19,7 +19,8 @@ public:
     bool connect(const std::string& host, int port, const std::string& project = "");
     bool sendMsg(const std::string& performative, const std::string& sender, const std::string& receiver, const std::string& content);
 bool sendPerception(const std::string& action, const std::string& perception);
-    void registerAction(const std::string& actionName, std::function<void(const std::vector<std::string>& args, std::function<void(bool)> respond)> callback);
+    void registerAction(const std::string& actionName, std::function<void(const std::string& agentName, const std::vector<std::string>& args, std::function<void(bool)> respond)> callback);
+    void onAnyAction(std::function<void(const std::string& agentName, const std::string& actionName, const std::vector<std::string>& args, std::function<void(bool)> respond)> callback);
     void close();
     void wait();
 
@@ -36,7 +37,8 @@ private:
     std::thread listenerThread;
     std::thread stdoutThread;
     std::thread stderrThread;
-    std::map<std::string, std::function<void(const std::vector<std::string>& args, std::function<void(bool)> respond)>> handlers;
+    std::map<std::string, std::function<void(const std::string& agentName, const std::vector<std::string>& args, std::function<void(bool)> respond)>> handlers;
+    std::function<void(const std::string& agentName, const std::string& actionName, const std::vector<std::string>& args, std::function<void(bool)> respond)> wildcardHandler;
     std::mutex writeMutex;
     std::string sdkVersion;
 };

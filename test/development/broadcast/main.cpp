@@ -11,7 +11,7 @@ int main() {
     panteao::Panteao engine;
     std::atomic<int> acks{0};
     
-    engine.registerAction("ack_broadcast", [&acks](const std::vector<std::string>& args, std::function<void(bool)> respond) {
+    engine.registerAction("ack_broadcast", [&acks](const std::string& agentName, const std::vector<std::string>& args, std::function<void(bool)> respond) {
         acks++;
         std::cout << "[SDK] Received ack_broadcast from agent! Total acks: " << acks.load() << std::endl;
         respond(true);

@@ -1,0 +1,12 @@
+mas roguelike_stress {
+    agent npc1 : benchmark_roguelike.asl { ag-arch: br.com.kkphoenix.jason.ipc.IPCAgArch }
+    agent npc2 : benchmark_roguelike.asl { ag-arch: br.com.kkphoenix.jason.ipc.IPCAgArch }
+    agent npc3 : benchmark_roguelike.asl { ag-arch: br.com.kkphoenix.jason.ipc.IPCAgArch }
+    agent npc4 : benchmark_roguelike.asl { ag-arch: br.com.kkphoenix.jason.ipc.IPCAgArch }
+    agent npc5 : benchmark_roguelike.asl { ag-arch: br.com.kkphoenix.jason.ipc.IPCAgArch }
+    agent npc6 : benchmark_roguelike.asl { ag-arch: br.com.kkphoenix.jason.ipc.IPCAgArch }
+    agent npc7 : benchmark_roguelike.asl { ag-arch: br.com.kkphoenix.jason.ipc.IPCAgArch }
+    agent npc8 : benchmark_roguelike.asl { ag-arch: br.com.kkphoenix.jason.ipc.IPCAgArch }
+    agent npc9 : benchmark_roguelike.asl { ag-arch: br.com.kkphoenix.jason.ipc.IPCAgArch }
+    agent npc10 : benchmark_roguelike.asl { ag-arch: br.com.kkphoenix.jason.ipc.IPCAgArch }
+}

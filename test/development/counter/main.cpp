@@ -6,7 +6,7 @@
 int main() {
     panteao::Panteao engine;
     
-    engine.registerAction("reset_counter", [](const std::vector<std::string>& args, std::function<void(bool)> respond) {
+    engine.registerAction("reset_counter", [](const std::string& agentName, const std::vector<std::string>& args, std::function<void(bool)> respond) {
         std::cout << "Agent requested reset! Counter reached 10 successfully." << std::endl;
         std::cout << "TEST PASSED!" << std::endl;
         respond(true);

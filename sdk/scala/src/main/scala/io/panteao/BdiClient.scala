@@ -53,7 +53,8 @@ class BdiClient(host: String = "127.0.0.1", port: Int = 0, project: String = nul
     }
   }
 
-  private val actionHandlers = new ConcurrentHashMap[String, (Array[String], (Boolean) => Unit) => Unit]()
+  private val actionHandlers = new ConcurrentHashMap[String, (String, Array[String], (Boolean) => Unit) => Unit]()
+  private var anyActionHandler: (String, String, Array[String], (Boolean) => Unit) => Unit = null
   private val listenerThread = new Thread(new Runnable {
     override def run(): Unit = listen()
   })
@@ -80,12 +81,16 @@ class BdiClient(host: String = "127.0.0.1", port: Int = 0, project: String = nul
       if (line.contains("\"type\":\"action\"")) {
         val actionIdPattern = "\"id\":\"(.*?)\"".r
         val actionPattern = "\"action\":\"(.*?)\"".r
+        val agentPattern = "\"agent\":\"(.*?)\"".r
         val actionId = actionIdPattern.findFirstMatchIn(line).map(_.group(1)).getOrElse("")
         val rawAction = actionPattern.findFirstMatchIn(line).map(_.group(1)).getOrElse("")
+        val agentName = agentPattern.findFirstMatchIn(line).map(_.group(1)).getOrElse("")
         val (name, args) = parseAction(rawAction)
         val handler = actionHandlers.get(name)
         if (handler != null) {
-          handler(args, (success: Boolean) => sendActionResult(actionId, success))
+          handler(agentName, args, (success: Boolean) => sendActionResult(actionId, success))
+        } else if (anyActionHandler != null) {
+          anyActionHandler(agentName, name, args, (success: Boolean) => sendActionResult(actionId, success))
         } else {
           sendActionResult(actionId, true)
         }
@@ -162,8 +167,12 @@ class BdiClient(host: String = "127.0.0.1", port: Int = 0, project: String = nul
     out.println(json)
   }
 
-  def registerAction(actionName: String, handler: (Array[String], (Boolean) => Unit) => Unit): Unit = {
+  def registerAction(actionName: String, handler: (String, Array[String], (Boolean) => Unit) => Unit): Unit = {
     actionHandlers.put(actionName, handler)
+  }
+
+  def onAnyAction(handler: (String, String, Array[String], (Boolean) => Unit) => Unit): Unit = {
+    anyActionHandler = handler
   }
 
   private def sendActionResult(id: String, success: Boolean): Unit = {

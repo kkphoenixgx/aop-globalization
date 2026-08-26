@@ -116,6 +116,7 @@ module Panteao
       end
 
       @handlers = {}
+      @any_action_handler = nil
       @running = true
       @thread = Thread.new { listen }
     end
@@ -128,6 +129,10 @@ module Panteao
     def send_perception(action, perception)
       payload = { type: 'perception', action: action, perception: perception }.to_json + "\n"
       @socket.write(payload)
+    end
+
+    def on_any_action(&block)
+      @any_action_handler = block
     end
 
     def register_action(action_name, &block)
@@ -155,12 +160,16 @@ module Panteao
         if msg['type'] == 'action'
           raw_action = msg['action']
           action_id = msg['id']
+          agent_name = msg['agent'] || ""
           name, args = parse_action(raw_action)
           
+          respond = proc { |success| send_action_result(action_id, success) }
+
           handler = @handlers[name]
           if handler
-            respond = proc { |success| send_action_result(action_id, success) }
-            handler.call(args, respond)
+            handler.call(agent_name, args, respond)
+          elsif @any_action_handler
+            @any_action_handler.call(agent_name, name, args, respond)
           else
             send_action_result(action_id, true)
           end
@@ -231,4 +240,9 @@ module Panteao
       end
     end
   end
+end
+
+module Panteao
+  Panteao = PanteaoClient::BdiClient
+  Panteão = PanteaoClient::BdiClient
 end

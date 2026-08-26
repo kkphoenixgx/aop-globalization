@@ -289,6 +289,10 @@ static void find_binary(char *out_path, size_t max_len) {
     [handlers setObject:handler forKey:actionName];
 }
 
+- (void)onAnyAction:(id<PanteaoWildcardHandler>)handler {
+    wildcardHandler = handler;
+}
+
 - (void)sendActionResultWithId:(NSString *)actionId success:(BOOL)success {
     NSString *payload = [NSString stringWithFormat:@"{\"type\":\"action_result\",\"id\":\"%@\",\"success\":%@}\n", actionId, success ? @"true" : @"false"];
     const char *msg = [payload UTF8String];
@@ -349,6 +353,16 @@ static void find_binary(char *out_path, size_t max_len) {
                     }
                 }
 
+                NSString *agentName = @"";
+                NSRange agentRange = [line rangeOfString:@"\"agent\":\""];
+                if (agentRange.location != NSNotFound) {
+                    NSUInteger start = agentRange.location + 9;
+                    NSRange endRange = [line rangeOfString:@"\"" options:0 range:NSMakeRange(start, line.length - start)];
+                    if (endRange.location != NSNotFound) {
+                        agentName = [line substringWithRange:NSMakeRange(start, endRange.location - start)];
+                    }
+                }
+
                 if (actionId.length > 0 && rawAction.length > 0) {
                     NSDictionary *parsed = [self parseAction:rawAction];
                     NSString *name = [parsed objectForKey:@"name"];
@@ -356,7 +370,10 @@ static void find_binary(char *out_path, size_t max_len) {
 
                     id<PanteaoActionHandler> handler = [handlers objectForKey:name];
                     if (handler) {
-                        BOOL success = [handler handlePanteaoAction:name args:args];
+                        BOOL success = [handler handlePanteaoAction:name agent:agentName args:args];
+                        [self sendActionResultWithId:actionId success:success];
+                    } else if (self->wildcardHandler) {
+                        BOOL success = [self->wildcardHandler handleAnyAction:name agent:agentName args:args];
                         [self sendActionResultWithId:actionId success:success];
                     } else {
                         [self sendActionResultWithId:actionId success:YES];

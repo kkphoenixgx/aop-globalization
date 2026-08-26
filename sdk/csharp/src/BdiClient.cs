@@ -15,7 +15,7 @@ namespace Panteao.Sdk
         private readonly NetworkStream _stream;
         private readonly StreamWriter _writer;
         private readonly StreamReader _reader;
-        private readonly ConcurrentDictionary<string, Action<string[], Action<bool>>> _handlers;
+        private readonly ConcurrentDictionary<string, Action<string, string[], Action<bool>>> _handlers;
         private readonly Thread _listenerThread;
         private bool _running;
 
@@ -184,7 +184,7 @@ namespace Panteao.Sdk
                 }
             }
 
-            _handlers = new ConcurrentDictionary<string, Action<string[], Action<bool>>>();
+            _handlers = new ConcurrentDictionary<string, Action<string, string[], Action<bool>>>();
             _running = true;
 
             _listenerThread = new Thread(Listen) { IsBackground = true };
@@ -227,10 +227,12 @@ namespace Panteao.Sdk
             }
         }
 
-        public void RegisterAction(string actionName, Action<string[], Action<bool>> callback)
+        public void RegisterAction(string actionName, Action<string, string[], Action<bool>> callback)
         {
             _handlers[actionName] = callback;
         }
+
+        public Action<string, string, string[], Action<bool>> OnAnyAction { get; set; }
 
         private void SendActionResult(string id, bool success)
         {
@@ -270,7 +272,13 @@ namespace Panteao.Sdk
 
                     if (_handlers.TryGetValue(name, out var handler))
                     {
-                        handler(args, (success) => SendActionResult(id, success));
+                        string agent = root.TryGetProperty("agent", out var agentProp) ? agentProp.GetString() : "";
+                        handler(agent, args, (success) => SendActionResult(id, success));
+                    }
+                    else if (OnAnyAction != null)
+                    {
+                        string agent = root.TryGetProperty("agent", out var agentProp) ? agentProp.GetString() : "";
+                        OnAnyAction(agent, name, args, (success) => SendActionResult(id, success));
                     }
                     else
                     {

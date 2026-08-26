@@ -68,6 +68,8 @@ int panteao_connect_with_project(PanteaoClient *client, const char *host, int po
     client->engine_pid = 0;
     client->callback = NULL;
     client->callback_context = NULL;
+    client->wildcard_callback = NULL;
+    client->wildcard_context = NULL;
 
     if (project != NULL) {
         if (port == 0) {
@@ -176,6 +178,11 @@ int panteao_send_action_result(PanteaoClient *client, const char *action_id, int
 void panteao_register_action_callback(PanteaoClient *client, PanteaoActionCallback callback, void *context) {
     client->callback = callback;
     client->callback_context = context;
+}
+
+void panteao_register_wildcard_callback(PanteaoClient *client, PanteaoActionCallback callback, void *context) {
+    client->wildcard_callback = callback;
+    client->wildcard_context = context;
 }
 
 int panteao_process_actions(PanteaoClient *client, int timeout_seconds) {
@@ -306,8 +313,24 @@ int panteao_process_actions(PanteaoClient *client, int timeout_seconds) {
                         }
                     }
 
+                    char agent_name[256] = "";
+                    char *agent_pos = strstr(line, "\"agent\":\"");
+                    if (agent_pos) {
+                        agent_pos += 9;
+                        char *agent_end = strchr(agent_pos, '"');
+                        if (agent_end) {
+                            size_t len = agent_end - agent_pos;
+                            if (len < sizeof(agent_name)) {
+                                memcpy(agent_name, agent_pos, len);
+                                agent_name[len] = '\0';
+                            }
+                        }
+                    }
+
                     if (client->callback) {
-                        client->callback(action_name, (const char **)args, args_count, action_id, client->callback_context);
+                        client->callback(agent_name, action_name, (const char **)args, args_count, action_id, client->callback_context);
+                    } else if (client->wildcard_callback) {
+                        client->wildcard_callback(agent_name, action_name, (const char **)args, args_count, action_id, client->wildcard_context);
                     } else {
                         panteao_send_action_result(client, action_id, 1);
                     }

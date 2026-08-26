@@ -88,6 +88,7 @@ BdiClient <- function(host = "127.0.0.1", port = 0, project = NULL) {
   }
 
   handlers <- list()
+  anyActionHandler <- NULL
 
   sendMsg <- function(performative, sender, receiver, content) {
     payload <- sprintf('{"type":"message","performative":"%s","sender":"%s","receiver":"%s","content":"%s"}\n', performative, sender, receiver, content)
@@ -104,6 +105,11 @@ BdiClient <- function(host = "127.0.0.1", port = 0, project = NULL) {
     payload <- sprintf('{"type":"action_result","id":"%s","success":%s}
 ', actionId, success_str)
     writeLines(payload, con)
+  }
+
+
+  onAnyAction <- function(callback) {
+    anyActionHandler <<- callback
   }
 
   registerAction <- function(actionName, callback) {
@@ -228,7 +234,10 @@ BdiClient <- function(host = "127.0.0.1", port = 0, project = NULL) {
     sendMsg = sendMsg,
     sendPerception = sendPerception,
     registerAction = registerAction,
+    onAnyAction = onAnyAction,
     processActions = processActions,
     close = closeConnection
   )
 }
+
+Panteao <- BdiClient

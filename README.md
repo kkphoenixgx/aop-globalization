@@ -22,6 +22,20 @@ Parameters:
 
 For applications that embed the BDI interpreter directly inside their codebase, the library wrappers (SDKs) will automatically download the correct engine binary for your platform and manage the background process lifecycle seamlessly when the engine instance is initialized. This enables programmatic control of the engine startup, shutdown, and event mapping without requiring any manual installation or setup on the host machine.
 
+
+### Catch-All Action Listener (Wildcard / Proxy Mode)
+
+All 18 SDKs support a global wildcard action listener (`onAnyAction` / `on_any_action`). This is extremely useful when building Gateway/Proxy architectures (like a Tauri application or a Unity Game), where your backend simply routes raw JSON strings to the frontend without needing to know every possible action explicitly:
+
+```python
+def catch_all(agent, action_name, args, respond):
+    print(f"Agent {agent} wants to perform '{action_name}' with args {args}")
+    # Forward the action to the frontend via WebSockets/IPC
+    respond(True)
+
+engine.on_any_action(catch_all)
+```
+
 ## Writing Agent Code
 
 The BDI architecture is configured through JaCaMo files and AgentSpeak plans.
@@ -154,7 +168,7 @@ from panteao import Panteao
 engine = Panteao(project="./project.jcm")
 engine.connect()
 
-def turn_on_ac(args, respond):
+def turn_on_ac(agent, args, respond):
     print("Action received! Turning on AC.")
     engine.send_msg("tell", "my_app", "bob", "ac_status(on)")
     respond(True) # Action successful
@@ -212,7 +226,7 @@ const { Panteao } = require('panteao-js');
 const engine = new Panteao({ project: './project.jcm' });
 engine.connect();
 
-engine.registerAction('turn_on_ac', (args, respond) => {
+engine.registerAction('turn_on_ac', (agent, args, respond) => {
     console.log("Action received! Turning on AC.");
     engine.sendMsg('tell', 'my_app', 'bob', 'ac_status(on)');
     respond(true); // Action successful
@@ -248,7 +262,7 @@ import { Panteao } from 'panteao-ts';
 const engine = new Panteao({ project: './project.jcm' });
 await engine.connect();
 
-engine.registerAction('turn_on_ac', (args: string[], respond: (success: boolean) => void) => {
+engine.registerAction('turn_on_ac', (agent: string, args: string[], respond: (success: boolean) => void) => {
     console.log("Action received! Turning on AC.");
     engine.sendMsg('tell', 'my_app', 'bob', 'ac_status(on)');
     respond(true); // Action successful
@@ -274,7 +288,7 @@ use panteao_client::BdiClient;
 fn main() {
     let engine = BdiClient::connect_with_project("127.0.0.1:0", Some("./project.jcm"), false).unwrap();
 
-    engine.register_action("turn_on_ac", |args, respond| {
+    engine.register_action("turn_on_ac", |agent, args, respond| {
         println!("Action received! Turning on AC.");
         // Implement action logic and reply
         respond(Box::new(|success| {}));
@@ -386,7 +400,7 @@ Boilerplate code:
 #include <stdio.h>
 #include <string.h>
 
-void my_callback(const char *name, const char **args, int args_count, const char *action_id, void *context) {
+void my_callback(const char *agent, const char *name, const char **args, int args_count, const char *action_id, void *context) {
     PanteaoClient *engine = (PanteaoClient *)context;
     if (strcmp(name, "turn_on_ac") == 0) {
         printf("Action received! Turning on AC.\\n");
@@ -468,7 +482,7 @@ class Program {
         // Spawns the native binary automatically
         using var engine = new Panteao("./project.jcm");
 
-        engine.RegisterAction("turn_on_ac", (args, respond) => {
+        engine.RegisterAction("turn_on_ac", (agent, args, respond) => {
             Console.WriteLine("Action received! Turning on AC.");
             engine.SendMsg("tell", "my_app", "bob", "ac_status(on)");
             respond(true); // Action successful
@@ -499,7 +513,7 @@ void main() async {
   final engine = Panteao(project: './project.jcm');
   await engine.connect();
 
-  engine.registerAction('turn_on_ac', (args, respond) {
+  engine.registerAction('turn_on_ac', (agent, args, respond) {
     print("Action received! Turning on AC.");
     engine.sendMsg('tell', 'my_app', 'bob', 'ac_status(on)');
     respond(true);

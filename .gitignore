@@ -20,6 +20,9 @@ bin/**/*.so
 *.bak
 test/**/build/
 bin/cpp/client
+sdk/rust/target/
+
+/sdk/rust/Cargo.lock
 
 # binários grandes usados apenas localmente
 **/scala-cli
@@ -38,3 +41,4 @@ coverage/
 .tmp/
 tmp/
 sdk/**/*.tgz
+

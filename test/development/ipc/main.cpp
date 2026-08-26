@@ -6,7 +6,7 @@
 int main() {
     panteao::Panteao engine;
     
-    engine.registerAction("do_custom_action", [](const std::vector<std::string>& args, std::function<void(bool)> respond) {
+    engine.registerAction("do_custom_action", [](const std::string& agentName, const std::vector<std::string>& args, std::function<void(bool)> respond) {
         std::cout << "do_custom_action called!" << std::endl;
         std::cout << "TEST PASSED!" << std::endl;
         respond(true);

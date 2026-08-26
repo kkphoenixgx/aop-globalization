@@ -176,8 +176,12 @@ bool Panteao::sendPerception(const std::string& action, const std::string& perce
     return false;
 }
 
-void Panteao::registerAction(const std::string& actionName, std::function<void(const std::vector<std::string>& args, std::function<void(bool)> respond)> callback) {
+void Panteao::registerAction(const std::string& actionName, std::function<void(const std::string& agentName, const std::vector<std::string>& args, std::function<void(bool)> respond)> callback) {
     handlers[actionName] = callback;
+}
+
+void Panteao::onAnyAction(std::function<void(const std::string& agentName, const std::string& actionName, const std::vector<std::string>& args, std::function<void(bool)> respond)> callback) {
+    wildcardHandler = callback;
 }
 
 void Panteao::sendActionResult(const std::string& actionId, bool success) {
@@ -294,10 +298,23 @@ void Panteao::listenLoop() {
                     }
                 }
 
+                std::string agentName;
+                size_t agentPos = line.find("\"agent\":\"");
+                if (agentPos != std::string::npos) {
+                    size_t agentEnd = line.find("\"", agentPos + 9);
+                    if (agentEnd != std::string::npos) {
+                        agentName = line.substr(agentPos + 9, agentEnd - agentPos - 9);
+                    }
+                }
+
                 if (!rawAction.empty()) {
                     auto [name, args] = parseAction(rawAction);
                     if (handlers.find(name) != handlers.end()) {
-                        handlers[name](args, [this, actionId](bool success) {
+                        handlers[name](agentName, args, [this, actionId](bool success) {
+                            sendActionResult(actionId, success);
+                        });
+                    } else if (wildcardHandler) {
+                        wildcardHandler(agentName, name, args, [this, actionId](bool success) {
                             sendActionResult(actionId, success);
                         });
                     } else {

@@ -95,13 +95,19 @@ public class BdiClient implements AutoCloseable {
 
     @FunctionalInterface
     public interface ActionHandler {
-        void handle(String[] args, Consumer<Boolean> respond);
+        void handle(String agentName, String[] args, Consumer<Boolean> respond);
+    }
+
+    @FunctionalInterface
+    public interface AnyActionHandler {
+        void handle(String agentName, String actionName, String[] args, Consumer<Boolean> respond);
     }
 
     private final Socket socket;
     private final PrintWriter out;
     private final BufferedReader in;
     private final Map<String, ActionHandler> actionHandlers = new HashMap<>();
+    private AnyActionHandler anyActionHandler = null;
     private final Thread listenerThread;
     private volatile boolean running = true;
     private Process engineProcess;
@@ -194,6 +200,7 @@ public class BdiClient implements AutoCloseable {
     private static final Pattern TYPE_PATTERN = Pattern.compile("\"type\"\\s*:\\s*\"([^\"]*)\"");
     private static final Pattern ACTION_PATTERN = Pattern.compile("\"action\"\\s*:\\s*\"([^\"]*)\"");
     private static final Pattern ID_PATTERN = Pattern.compile("\"id\"\\s*:\\s*\"([^\"]*)\"");
+    private static final Pattern AGENT_PATTERN = Pattern.compile("\"agent\"\\s*:\\s*\"([^\"]*)\"");
 
     private void handleIncomingLine(String line) {
         if (line.isEmpty()) return;
@@ -208,8 +215,13 @@ public class BdiClient implements AutoCloseable {
                 Matcher idMatcher = ID_PATTERN.matcher(line);
                 String actionId = idMatcher.find() ? idMatcher.group(1) : "";
 
+                Matcher agentMatcher = AGENT_PATTERN.matcher(line);
+                String agentName = agentMatcher.find() ? agentMatcher.group(1) : "";
+
                 if (handler != null) {
-                    handler.handle(action.args, (success) -> sendActionResult(actionId, success));
+                    handler.handle(agentName, action.args, (success) -> sendActionResult(actionId, success));
+                } else if (anyActionHandler != null) {
+                    anyActionHandler.handle(agentName, action.name, action.args, (success) -> sendActionResult(actionId, success));
                 } else {
                     sendActionResult(actionId, true);
                 }
@@ -296,6 +308,10 @@ public class BdiClient implements AutoCloseable {
 
     public void registerAction(String actionName, ActionHandler handler) {
         actionHandlers.put(actionName, handler);
+    }
+
+    public void onAnyAction(AnyActionHandler handler) {
+        this.anyActionHandler = handler;
     }
 
     private void sendActionResult(String id, boolean success) {

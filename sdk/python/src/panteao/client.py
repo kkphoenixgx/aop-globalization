@@ -28,6 +28,7 @@ class Panteao:
         self.socket = None
         self.file = None
         self.action_handlers = {}
+        self.any_action_handler = None
         self.message_handlers = {}
         self.general_message_handler = None
         self.running = False
@@ -130,16 +131,20 @@ class Panteao:
             msg = json.loads(line)
             if msg.get("type") == "action":
                 raw_action = msg.get("action", "")
+                agent_name = msg.get("agent", "")
                 name, args = self._parse_action(raw_action)
                 handler = self.action_handlers.get(name)
                 
+                action_id = msg.get("id")
+                def respond(success: bool):
+                    self._send_action_result(action_id, success)
+
                 if handler:
-                    action_id = msg.get("id")
-                    def respond(success: bool):
-                        self._send_action_result(action_id, success)
-                    handler(args, respond)
+                    handler(agent_name, args, respond)
+                elif self.any_action_handler:
+                    self.any_action_handler(agent_name, name, args, respond)
                 else:
-                    self._send_action_result(msg.get("id"), True)
+                    self._send_action_result(action_id, True)
             elif msg.get("type") == "message":
                 performative = msg.get("performative")
                 sender = msg.get("sender")
@@ -248,7 +253,10 @@ class Panteao:
         }
         self.socket.sendall((json.dumps(payload) + "\n").encode('utf-8'))
 
-    def register_action(self, action_name: str, callback: Callable[[List[str], Callable[[bool], None]], None]) -> None:
+    def on_any_action(self, callback: Callable[[str, str, List[str], Callable[[bool], None]], None]) -> None:
+        self.any_action_handler = callback
+
+    def register_action(self, action_name: str, callback: Callable[[str, List[str], Callable[[bool], None]], None]) -> None:
         self.action_handlers[action_name] = callback
 
     def register_message(self, callback: Callable[[str, str, str, str], None]) -> None:

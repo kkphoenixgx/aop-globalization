@@ -44,6 +44,7 @@ class BdiClient {
 
     private $socket;
     private $handlers = [];
+    private $anyActionHandler = null;
     private $process;
 
     private static function getFreePort(): int {
@@ -140,6 +141,10 @@ class BdiClient {
         fwrite($this->socket, $payload);
     }
 
+    public function onAnyAction(callable $callback): void {
+        $this->anyActionHandler = $callback;
+    }
+
     public function registerAction(string $actionName, callable $callback): void {
         $this->handlers[$actionName] = $callback;
     }
@@ -158,14 +163,18 @@ class BdiClient {
             if ($msg && isset($msg['type']) && $msg['type'] === 'action') {
                 $rawAction = $msg['action'];
                 $id = $msg['id'];
+                $agentName = $msg['agent'] ?? '';
                 $parsed = $this->parseAction($rawAction);
                 
+                $respond = function(bool $success) use ($id) {
+                    $this->sendActionResult($id, $success);
+                };
+
                 $handler = $this->handlers[$parsed['name']] ?? null;
                 if ($handler) {
-                    $respond = function(bool $success) use ($id) {
-                        $this->sendActionResult($id, $success);
-                    };
-                    $handler($parsed['args'], $respond);
+                    $handler($agentName, $parsed['args'], $respond);
+                } else if ($this->anyActionHandler) {
+                    ($this->anyActionHandler)($agentName, $parsed['name'], $parsed['args'], $respond);
                 } else {
                     $this->sendActionResult($id, true);
                 }

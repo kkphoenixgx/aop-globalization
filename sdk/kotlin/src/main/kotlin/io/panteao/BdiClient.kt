@@ -13,7 +13,8 @@ class BdiClient(host: String = "127.0.0.1", port: Int = 0, project: String? = nu
     private val socket: Socket
     private val out: PrintWriter
     private val reader: BufferedReader
-    private val actionHandlers = ConcurrentHashMap<String, (Array<String>, (Boolean) -> Unit) -> Unit>()
+    private val actionHandlers = ConcurrentHashMap<String, (String, Array<String>, (Boolean) -> Unit) -> Unit>()
+    private var anyActionHandler: ((String, String, Array<String>, (Boolean) -> Unit) -> Unit)? = null
     private val listenerThread: Thread
     @Volatile private var running = true
     private var engineProcess: Process? = null
@@ -185,14 +186,24 @@ class BdiClient(host: String = "127.0.0.1", port: Int = 0, project: String? = nu
                     line.substring(start, end)
                 } else ""
                 
+                val agentStart = line.indexOf("\"agent\":\"")
+                val agentName = if (agentStart != -1) {
+                    val start = agentStart + 9
+                    val end = line.indexOf("\"", start)
+                    if (end != -1) line.substring(start, end) else ""
+                } else ""
+                
                 val actionStart = line.indexOf("\"action\":\"")
                 val rawAction = if (actionStart != -1) {
                     val start = actionStart + 10
-                    // action value ends right before the closing brace or the next comma
-                    val end = line.lastIndexOf("\"")
+                    var end = start
+                    while (end < line.length) {
+                        if (line[end] == '"' && line[end - 1] != '\\') {
+                            break
+                        }
+                        end++
+                    }
                     var s = line.substring(start, end)
-                    if (s.endsWith("\"}")) s = s.substring(0, s.length - 2)
-                    if (s.endsWith("\"")) s = s.substring(0, s.length - 1)
                     s = s.replace("\\\"", "\"")
                     s
                 } else ""
@@ -200,7 +211,9 @@ class BdiClient(host: String = "127.0.0.1", port: Int = 0, project: String? = nu
                 val (name, args) = parseAction(rawAction)
                 val handler = actionHandlers[name]
                 if (handler != null) {
-                    handler(args) { success -> sendActionResult(actionId, success) }
+                    handler(agentName, args) { success -> sendActionResult(actionId, success) }
+                } else if (anyActionHandler != null) {
+                    anyActionHandler!!(agentName, name, args) { success -> sendActionResult(actionId, success) }
                 } else {
                     sendActionResult(actionId, true)
                 }
@@ -276,8 +289,12 @@ class BdiClient(host: String = "127.0.0.1", port: Int = 0, project: String? = nu
         out.flush()
     }
 
-    fun registerAction(actionName: String, handler: (args: Array<String>, respond: (Boolean) -> Unit) -> Unit) {
+    fun registerAction(actionName: String, handler: (agentName: String, args: Array<String>, respond: (Boolean) -> Unit) -> Unit) {
         actionHandlers[actionName] = handler
+    }
+
+    fun onAnyAction(handler: (agentName: String, actionName: String, args: Array<String>, respond: (Boolean) -> Unit) -> Unit) {
+        anyActionHandler = handler
     }
 
     private fun sendActionResult(id: String, success: Boolean) {

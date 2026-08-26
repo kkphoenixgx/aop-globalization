@@ -65,7 +65,8 @@ export interface BdiClientOptions {
     dev?: boolean;
 }
 
-export type ActionCallback = (args: string[], respond: (success: boolean) => void) => void;
+export type ActionCallback = (agentName: string, args: string[], respond: (success: boolean) => void) => void;
+export type WildcardCallback = (agentName: string, actionName: string, args: string[], respond: (success: boolean) => void) => void;
 
 function getFreePort(): Promise<number> {
     return new Promise((resolve, reject) => {
@@ -90,6 +91,7 @@ export class BdiClient extends EventEmitter {
     private autoReconnect: boolean;
     private reconnectInterval: number;
     private actionHandlers: Map<string, ActionCallback> = new Map();
+    private wildcardHandler: WildcardCallback | null = null;
     public project?: string;
     public dev: boolean;
     private binPath: string;
@@ -263,7 +265,12 @@ export class BdiClient extends EventEmitter {
                     const respond = (success: boolean) => {
                         this.sendActionResult(msg.id, success);
                     };
-                    handler(args, respond);
+                    handler(msg.agent, args, respond);
+                } else if (this.wildcardHandler) {
+                    const respond = (success: boolean) => {
+                        this.sendActionResult(msg.id, success);
+                    };
+                    this.wildcardHandler(msg.agent, name, args, respond);
                 } else {
                     this.sendActionResult(msg.id, true);
                 }
@@ -280,7 +287,10 @@ export class BdiClient extends EventEmitter {
                         const handler = this.actionHandlers.get(parsed.name);
                         if (handler) {
                             const dummyRespond = () => {};
-                            handler(parsed.args, dummyRespond);
+                            handler(sender, parsed.args, dummyRespond);
+                        } else if (this.wildcardHandler) {
+                            const dummyRespond = () => {};
+                            this.wildcardHandler(sender, parsed.name, parsed.args, dummyRespond);
                         }
                         this.emit('action', { name: parsed.name, args: parsed.args, agent: sender, id: null });
                     }
@@ -357,6 +367,10 @@ export class BdiClient extends EventEmitter {
 
     public registerAction(actionName: string, callback: ActionCallback): void {
         this.actionHandlers.set(actionName, callback);
+    }
+
+    public onAnyAction(handler: WildcardCallback): void {
+        this.wildcardHandler = handler;
     }
 
     private sendActionResult(id: string, success: boolean): void {

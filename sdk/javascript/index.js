@@ -118,6 +118,7 @@ class BdiClient extends EventEmitter {
 
         this.buffer = '';
         this.actionHandlers = new Map();
+        this.wildcardHandler = null;
         this.process = null;
         this.socket = new net.Socket();
 
@@ -391,6 +392,21 @@ class BdiClient extends EventEmitter {
                             );
 
                     handler(
+                        msg.agent,
+                        args,
+                        respond
+                    );
+                } else if (this.wildcardHandler) {
+                    const respond =
+                        success =>
+                            this.sendActionResult(
+                                msg.id,
+                                success
+                            );
+
+                    this.wildcardHandler(
+                        msg.agent,
+                        name,
                         args,
                         respond
                     );
@@ -455,6 +471,14 @@ class BdiClient extends EventEmitter {
 
                     if (handler) {
                         handler(
+                            sender,
+                            parsed.args,
+                            () => {}
+                        );
+                    } else if (this.wildcardHandler) {
+                        this.wildcardHandler(
+                            sender,
+                            parsed.name,
                             parsed.args,
                             () => {}
                         );
@@ -662,6 +686,10 @@ class BdiClient extends EventEmitter {
             actionName,
             callback
         );
+    }
+
+    onAnyAction(handler) {
+        this.wildcardHandler = handler;
     }
 
     sendActionResult(

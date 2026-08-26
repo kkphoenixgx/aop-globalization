@@ -5,7 +5,8 @@ import Glibc
 import Darwin
 #endif
 
-public typealias ActionCallback = ([String], @escaping (Bool) -> Void) -> Void
+public typealias ActionCallback = (String, [String], @escaping (Bool) -> Void) -> Void
+public typealias WildcardCallback = (String, String, [String], @escaping (Bool) -> Void) -> Void
 
 public class BdiClient {
 
@@ -90,6 +91,7 @@ public class BdiClient {
 
     private var sockFd: Int32 = -1
     private var actionHandlers: [String: ActionCallback] = [:]
+    private var wildcardHandler: WildcardCallback?
     private var process: Process?
     private let host: String
     private var port: Int
@@ -248,10 +250,15 @@ public class BdiClient {
 
         let actionId = extractJsonValue(line, key: "id") ?? ""
         let rawAction = extractJsonValue(line, key: "action") ?? ""
+        let agentName = extractJsonValue(line, key: "agent") ?? ""
 
         let (name, args) = parseAction(rawAction)
         if let handler = actionHandlers[name] {
-            handler(args) { [weak self] success in
+            handler(agentName, args) { [weak self] success in
+                self?.sendActionResult(actionId, success: success)
+            }
+        } else if let wildcard = wildcardHandler {
+            wildcard(agentName, name, args) { [weak self] success in
                 self?.sendActionResult(actionId, success: success)
             }
         } else {
@@ -332,6 +339,10 @@ public class BdiClient {
 
     public func registerAction(_ actionName: String, handler: @escaping ActionCallback) {
         actionHandlers[actionName] = handler
+    }
+
+    public func onAnyAction(handler: @escaping WildcardCallback) {
+        wildcardHandler = handler
     }
 
     private func sendActionResult(_ id: String, success: Bool) {

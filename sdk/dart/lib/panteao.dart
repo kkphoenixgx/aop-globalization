@@ -10,7 +10,8 @@ class Panteao {
   final String? project;
   final bool dev;
   Process? _process;
-  final Map<String, Function(List<String> args, Function(bool success) respond)> _handlers = {};
+  final Map<String, Function(String agentName, List<String> args, Function(bool success) respond)> _handlers = {};
+  Function(String agentName, String actionName, List<String> args, Function(bool success) respond)? _wildcardHandler;
   bool _running = false;
   final String sdkVersion = '1.1.37';
 
@@ -142,8 +143,11 @@ class Panteao {
         final parsed = _parseAction(rawAction);
         
         final handler = _handlers[parsed.name];
+        final agentName = msg['agent'] as String? ?? 'unknown';
         if (handler != null) {
-          handler(parsed.args, (success) => _sendActionResult(id, success));
+          handler(agentName, parsed.args, (success) => _sendActionResult(id, success));
+        } else if (_wildcardHandler != null) {
+          _wildcardHandler!(agentName, parsed.name, parsed.args, (success) => _sendActionResult(id, success));
         } else {
           _sendActionResult(id, true);
         }
@@ -218,8 +222,13 @@ class Panteao {
   }
 
   /// Registers a callback to handle external actions dispatched by the BDI agents.
-  void registerAction(String actionName, Function(List<String> args, Function(bool success) respond) callback) {
+  void registerAction(String actionName, Function(String agentName, List<String> args, Function(bool success) respond) callback) {
     _handlers[actionName] = callback;
+  }
+
+  /// Registers a wildcard handler for any action not explicitly registered.
+  void onAnyAction(Function(String agentName, String actionName, List<String> args, Function(bool success) respond) handler) {
+    _wildcardHandler = handler;
   }
 
   void _sendActionResult(String id, bool success) {

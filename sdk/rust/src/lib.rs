@@ -35,11 +35,13 @@ struct ActionResult {
     success: bool,
 }
 
-pub type ActionCallback = Box<dyn Fn(&[String], Box<dyn FnOnce(bool) + Send>) + Send + Sync>;
+pub type ActionCallback = Box<dyn Fn(&str, &[String], Box<dyn FnOnce(bool) + Send>) + Send + Sync>;
+pub type WildcardCallback = Box<dyn Fn(&str, &str, &[String], Box<dyn FnOnce(bool) + Send>) + Send + Sync>;
 
 pub struct BdiClient {
     stream: Arc<Mutex<TcpStream>>,
     handlers: Arc<Mutex<HashMap<String, ActionCallback>>>,
+    wildcard_handler: Arc<Mutex<Option<WildcardCallback>>>,
     running: Arc<Mutex<bool>>,
     process: Option<Arc<Mutex<std::process::Child>>>,
 }
@@ -73,7 +75,12 @@ fn find_binary() -> PathBuf {
 }
 
 
-fn download_engine(bin_path: &PathBuf) -> std::io::Result<()> {
+/// **WARNING**: This function is exposed for advanced gateway/proxy architectures (like Tauri) where the
+/// application needs strict control over the sidecar process lifecycle. 
+/// It is generally considered **BAD PRACTICE** to manage the BDI Engine sidecar manually. 
+/// You should prefer using the standard `BdiClient::connect_with_project()` which handles the engine lifecycle,
+/// downloading, and execution automatically.
+pub fn download_engine_if_needed(bin_path: &PathBuf) -> std::io::Result<()> {
     let is_win = cfg!(target_os = "windows");
     let is_mac = cfg!(target_os = "macos");
     let os_name = if is_win { "win32" } else if is_mac { "darwin" } else { "linux" };
@@ -167,7 +174,7 @@ impl BdiClient {
             if !bin.exists() {
                 let exe_dir = env::current_exe()?.parent().unwrap().to_path_buf();
                 bin = exe_dir.join(if cfg!(target_os = "windows") { "panteao-engine.exe" } else { "panteao-engine" });
-                download_engine(&bin)?;
+                download_engine_if_needed(&bin)?;
             }
             
             let mut child = std::process::Command::new(&bin)
@@ -211,6 +218,7 @@ impl BdiClient {
         let client = Self {
             stream: Arc::new(Mutex::new(stream)),
             handlers: Arc::new(Mutex::new(HashMap::new())),
+            wildcard_handler: Arc::new(Mutex::new(None)),
             running: Arc::new(Mutex::new(true)),
             process: child_proc,
         };
@@ -247,14 +255,23 @@ impl BdiClient {
 
     pub fn register_action<F>(&self, action_name: &str, callback: F)
     where
-        F: Fn(&[String], Box<dyn FnOnce(bool) + Send>) + Send + Sync + 'static,
+        F: Fn(&str, &[String], Box<dyn FnOnce(bool) + Send>) + Send + Sync + 'static,
     {
         self.handlers.lock().unwrap().insert(action_name.to_string(), Box::new(callback));
+    }
+
+    
+    pub fn on_any_action<F>(&self, callback: F)
+    where
+        F: Fn(&str, &str, &[String], Box<dyn FnOnce(bool) + Send>) + Send + Sync + 'static,
+    {
+        *self.wildcard_handler.lock().unwrap() = Some(Box::new(callback));
     }
 
     fn start_listener(&self) {
         let stream_clone = Arc::clone(&self.stream);
         let handlers_clone = Arc::clone(&self.handlers);
+        let wildcard_clone = Arc::clone(&self.wildcard_handler);
         let running_clone = Arc::clone(&self.running);
 
         thread::spawn(move || {
@@ -273,23 +290,30 @@ impl BdiClient {
                         let (name, args) = parse_action(&req.action);
                         let handlers = handlers_clone.lock().unwrap();
                         
+                        let action_id = req.id.clone();
+                        let agent_name = req.agent.clone();
+                        let action_name = name.clone();
+                        let s_clone = Arc::clone(&stream_clone);
+                        
+                        let respond = Box::new(move |success: bool| {
+                            let res = ActionResult {
+                                r#type: "action_result".to_string(),
+                                id: action_id,
+                                success,
+                            };
+                            let mut payload = serde_json::to_string(&res).unwrap();
+                            payload.push('\n');
+                            if let Ok(mut s) = s_clone.lock() {
+                                let _ = s.write_all(payload.as_bytes());
+                                let _ = s.flush();
+                            }
+                        });
+                        
+                        let wildcard = wildcard_clone.lock().unwrap();
                         if let Some(handler) = handlers.get(&name) {
-                            let action_id = req.id.clone();
-                            let s_clone = Arc::clone(&stream_clone);
-                            let respond = Box::new(move |success: bool| {
-                                let res = ActionResult {
-                                    r#type: "action_result".to_string(),
-                                    id: action_id,
-                                    success,
-                                };
-                                let mut payload = serde_json::to_string(&res).unwrap();
-                                payload.push('\n');
-                                if let Ok(mut s) = s_clone.lock() {
-                                    let _ = s.write_all(payload.as_bytes());
-                                    let _ = s.flush();
-                                }
-                            });
-                            handler(&args, respond);
+                            handler(&agent_name, &args, respond);
+                        } else if let Some(ref handler) = *wildcard {
+                            handler(&agent_name, &action_name, &args, respond);
                         } else {
                             let res = ActionResult {
                                 r#type: "action_result".to_string(),
@@ -375,3 +399,5 @@ fn clean_arg(arg: &str) -> String {
         s.to_string()
     }
 }
+
+pub type Panteao = BdiClient;
