@@ -1,3 +1,9 @@
+## 1.1.40
+
+- throws Exception error
+- ReadMe error and java SDK error
+- Athena:   ### 🧠 1. Novas Funcionalidades Arquiteturais (Features)
+-   ### 🧠 1. Novas Funcionalidades Arquiteturais (Features)
 ## 1.1.37
 
 - Athena keepAlive update +version

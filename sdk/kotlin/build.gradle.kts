@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "io.panteao"
-version = "1.1.37"
+version = "1.1.40"
 
 repositories {
     mavenCentral()
