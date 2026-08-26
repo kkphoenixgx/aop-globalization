@@ -798,5 +798,5 @@ graph LR
         SDK <--> App
     end
     
-    IPCEnv <-->| "TCP Sockets (JSON Speech Acts)" | SDK
+    IPCEnv <-->|"TCP Sockets (JSON Speech Acts)"| SDK
 ```
