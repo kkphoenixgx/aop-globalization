@@ -112,6 +112,20 @@
         "allPublicMethods": true
     },
     {
+        "name": "jason.pl.PlanLibraryListener",
+        "allDeclaredConstructors": true,
+        "allPublicConstructors": true,
+        "allDeclaredMethods": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "jason.pl.PlanLibrary",
+        "allDeclaredConstructors": true,
+        "allPublicConstructors": true,
+        "allDeclaredMethods": true,
+        "allPublicMethods": true
+    },
+    {
         "name": "jason.NoValueException",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
@@ -119,35 +133,7 @@
         "allPublicMethods": true
     },
     {
-        "name": "jason.infra.centralised.CentralisedAgArch",
-        "allDeclaredConstructors": true,
-        "allPublicConstructors": true,
-        "allDeclaredMethods": true,
-        "allPublicMethods": true
-    },
-    {
-        "name": "jason.infra.centralised.RunCentralisedMAS",
-        "allDeclaredConstructors": true,
-        "allPublicConstructors": true,
-        "allDeclaredMethods": true,
-        "allPublicMethods": true
-    },
-    {
-        "name": "jason.infra.MASLauncherInfraTier",
-        "allDeclaredConstructors": true,
-        "allPublicConstructors": true,
-        "allDeclaredMethods": true,
-        "allPublicMethods": true
-    },
-    {
         "name": "jason.infra.local.BaseLocalMAS",
-        "allDeclaredConstructors": true,
-        "allPublicConstructors": true,
-        "allDeclaredMethods": true,
-        "allPublicMethods": true
-    },
-    {
-        "name": "jason.infra.local.LocalMASLauncherAnt",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
         "allDeclaredMethods": true,
@@ -176,13 +162,6 @@
     },
     {
         "name": "jason.infra.local.RConf",
-        "allDeclaredConstructors": true,
-        "allPublicConstructors": true,
-        "allDeclaredMethods": true,
-        "allPublicMethods": true
-    },
-    {
-        "name": "jason.infra.local.LocalFactory",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
         "allDeclaredMethods": true,
@@ -294,13 +273,6 @@
         "allPublicMethods": true
     },
     {
-        "name": "jason.infra.RunProjectListener",
-        "allDeclaredConstructors": true,
-        "allPublicConstructors": true,
-        "allDeclaredMethods": true,
-        "allPublicMethods": true
-    },
-    {
         "name": "jason.infra.jade.JadeAg",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
@@ -351,27 +323,6 @@
     },
     {
         "name": "jason.infra.jade.JadeEnvironment",
-        "allDeclaredConstructors": true,
-        "allPublicConstructors": true,
-        "allDeclaredMethods": true,
-        "allPublicMethods": true
-    },
-    {
-        "name": "jason.infra.jade.JadeFactory",
-        "allDeclaredConstructors": true,
-        "allPublicConstructors": true,
-        "allDeclaredMethods": true,
-        "allPublicMethods": true
-    },
-    {
-        "name": "jason.infra.jade.JadeMASLauncherAnt",
-        "allDeclaredConstructors": true,
-        "allPublicConstructors": true,
-        "allDeclaredMethods": true,
-        "allPublicMethods": true
-    },
-    {
-        "name": "jason.infra.InfrastructureFactory",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
         "allDeclaredMethods": true,
@@ -491,13 +442,6 @@
     },
     {
         "name": "jason.util.ToJson",
-        "allDeclaredConstructors": true,
-        "allPublicConstructors": true,
-        "allDeclaredMethods": true,
-        "allPublicMethods": true
-    },
-    {
-        "name": "jason.util.CreateNewProject",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
         "allDeclaredMethods": true,
@@ -784,13 +728,6 @@
         "allPublicMethods": true
     },
     {
-        "name": "jason.asSyntax.PlanLibrary",
-        "allDeclaredConstructors": true,
-        "allPublicConstructors": true,
-        "allDeclaredMethods": true,
-        "allPublicMethods": true
-    },
-    {
         "name": "jason.asSyntax.ASSyntax",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
@@ -945,13 +882,6 @@
         "allPublicMethods": true
     },
     {
-        "name": "jason.asSemantics.QueryCacheSimple",
-        "allDeclaredConstructors": true,
-        "allPublicConstructors": true,
-        "allDeclaredMethods": true,
-        "allPublicMethods": true
-    },
-    {
         "name": "jason.asSemantics.CircumstanceListener",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
@@ -960,13 +890,6 @@
     },
     {
         "name": "jason.asSemantics.Event",
-        "allDeclaredConstructors": true,
-        "allPublicConstructors": true,
-        "allDeclaredMethods": true,
-        "allPublicMethods": true
-    },
-    {
-        "name": "jason.asSemantics.QueryCacheKey",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
         "allDeclaredMethods": true,
@@ -995,13 +918,6 @@
     },
     {
         "name": "jason.asSemantics.IMCondition",
-        "allDeclaredConstructors": true,
-        "allPublicConstructors": true,
-        "allDeclaredMethods": true,
-        "allPublicMethods": true
-    },
-    {
-        "name": "jason.asSemantics.QueryCacheAdv",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
         "allDeclaredMethods": true,
@@ -1078,13 +994,6 @@
         "allPublicMethods": true
     },
     {
-        "name": "jason.runtime.RunJasonProject",
-        "allDeclaredConstructors": true,
-        "allPublicConstructors": true,
-        "allDeclaredMethods": true,
-        "allPublicMethods": true
-    },
-    {
         "name": "jason.runtime.RuntimeServices",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
@@ -1128,13 +1037,6 @@
     },
     {
         "name": "jason.runtime.Settings",
-        "allDeclaredConstructors": true,
-        "allPublicConstructors": true,
-        "allDeclaredMethods": true,
-        "allPublicMethods": true
-    },
-    {
-        "name": "jason.runtime.RuntimeServicesInfraTier",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
         "allDeclaredMethods": true,
@@ -1261,20 +1163,6 @@
     },
     {
         "name": "jason.mas2j.AgentParameters",
-        "allDeclaredConstructors": true,
-        "allPublicConstructors": true,
-        "allDeclaredMethods": true,
-        "allPublicMethods": true
-    },
-    {
-        "name": "jason.profiling.QueryProfiling",
-        "allDeclaredConstructors": true,
-        "allPublicConstructors": true,
-        "allDeclaredMethods": true,
-        "allPublicMethods": true
-    },
-    {
-        "name": "jason.environment.SteppedEnvironment",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
         "allDeclaredMethods": true,
@@ -1436,13 +1324,6 @@
     },
     {
         "name": "jason.functions.Count",
-        "allDeclaredConstructors": true,
-        "allPublicConstructors": true,
-        "allDeclaredMethods": true,
-        "allPublicMethods": true
-    },
-    {
-        "name": "jason.functions.Average",
         "allDeclaredConstructors": true,
         "allPublicConstructors": true,
         "allDeclaredMethods": true,

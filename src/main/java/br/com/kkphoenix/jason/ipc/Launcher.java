@@ -43,6 +43,14 @@ public class Launcher {
         String projectPath = null;
         List<String> extraArgs = new ArrayList<>();
 
+        // Check for help flag first
+        for (String arg : args) {
+            if (arg.equals("--help") || arg.equals("-h")) {
+                printUsage();
+                System.exit(0);
+            }
+        }
+
         //? --------- Simple CLI Parsing for jcm && mas2j files ---------
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
@@ -353,6 +361,18 @@ public class Launcher {
     }
 
     private static void printUsage() {
-        System.out.println("Usage: panteao <project.jcm | project.mas2j> [options]");
+        System.out.println("\n=======================================================");
+        System.out.println(" 🏛️  Panteão Engine (BDI Interpreter)");
+        System.out.println("=======================================================\n");
+        System.out.println("Usage:");
+        System.out.println("  panteao-engine <project.jcm | project.mas2j> [options]\n");
+        System.out.println("Arguments:");
+        System.out.println("  <project_file>     Path to the JaCaMo (.jcm) or Jason (.mas2j) project file to run.\n");
+        System.out.println("Options:");
+        System.out.println("  -h, --help         Show this help message and exit.");
+        System.out.println("  --port <number>    Override the default TCP socket port for the SDK connection.\n");
+        System.out.println("Examples:");
+        System.out.println("  panteao-engine project.jcm");
+        System.out.println("  panteao-engine src/game.jcm --port 44445\n");
     }
 }

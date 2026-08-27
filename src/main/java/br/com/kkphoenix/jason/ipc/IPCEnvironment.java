@@ -63,7 +63,7 @@ public class IPCEnvironment extends Environment {
             Thread readyNotifier = new Thread(() -> {
                 try {
                     while (running) {
-                        jason.infra.local.BaseLocalMAS runner = jason.infra.centralised.RunCentralisedMAS.getRunner();
+                        jason.infra.local.BaseLocalMAS runner = jason.infra.local.RunLocalMAS.getRunner();
                         if (runner != null && runner.getAgs() != null && !runner.getAgs().isEmpty()) {
                             Thread.sleep(100);
                             JSONObject readyMsg = new JSONObject();
@@ -138,8 +138,8 @@ public class IPCEnvironment extends Environment {
                 // Although Jason message class doesn't store timeout natively, we keep parsing it as per KQML.
 
                 if ("all".equalsIgnoreCase(receiver)) {
-                    for (String agName : jason.infra.centralised.RunCentralisedMAS.getRunner().getAgs().keySet()) {
-                        jason.infra.local.LocalAgArch arch = jason.infra.centralised.RunCentralisedMAS.getRunner().getAg(agName);
+                    for (String agName : jason.infra.local.RunLocalMAS.getRunner().getAgs().keySet()) {
+                        jason.infra.local.LocalAgArch arch = jason.infra.local.RunLocalMAS.getRunner().getAg(agName);
                         if (arch != null) {
                             jason.asSemantics.Message bcastMsg = new jason.asSemantics.Message(msg);
                             bcastMsg.setReceiver(agName);
@@ -147,7 +147,7 @@ public class IPCEnvironment extends Environment {
                         }
                     }
                 } else {
-                    jason.infra.local.LocalAgArch arch = jason.infra.centralised.RunCentralisedMAS.getRunner().getAg(receiver);
+                    jason.infra.local.LocalAgArch arch = jason.infra.local.RunLocalMAS.getRunner().getAg(receiver);
                     if (arch != null) {
                         arch.getTS().getC().addMsg(msg);
                     } else {
