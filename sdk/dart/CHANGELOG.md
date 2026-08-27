@@ -1,3 +1,6 @@
+## 1.1.42
+
+- getPL() Panteão error +version
 ## 1.1.41
 
 - new version +version

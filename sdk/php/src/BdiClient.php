@@ -3,7 +3,7 @@
 namespace Panteao;
 
 class BdiClient {
-    const VERSION = '1.1.41';
+    const VERSION = '1.1.42';
 
     private static function downloadEngine(string $binPath): void {
         $isWin = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN');
