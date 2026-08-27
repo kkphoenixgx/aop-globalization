@@ -128,7 +128,7 @@ task generateReflectionConfig {
             def entries = zip.entries()
             while (entries.hasMoreElements()) {
                 def entry = entries.nextElement()
-                def prefixes = ["jason/stdlib/", "jason/functions/", "jason/bb/", "jason/architecture/", "jason/infra/", "jason/control/", "jason/Argo.class", "jason/Mailer.class"]
+                def prefixes = ["jason/"]
                 def matched = prefixes.find { entry.name.startsWith(it) }
                 if (matched != null && entry.name.endsWith(".class") && !entry.name.contains('$')) {
                     def className = entry.name.replace('/', '.').replace('.class', '')
