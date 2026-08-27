@@ -1,3 +1,6 @@
+## 1.1.43
+
+- athena jason.asSemantics.Agent.getPL() error +version
 ## 1.1.42
 
 - getPL() Panteão error +version
