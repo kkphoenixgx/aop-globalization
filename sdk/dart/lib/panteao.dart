@@ -13,7 +13,7 @@ class Panteao {
   final Map<String, Function(String agentName, List<String> args, Function(bool success) respond)> _handlers = {};
   Function(String agentName, String actionName, List<String> args, Function(bool success) respond)? _wildcardHandler;
   bool _running = false;
-  final String sdkVersion = '1.1.43';
+  final String sdkVersion = '1.1.44';
 
   /// Creates a new Panteao instance.
   /// [host] is the host address, defaults to 127.0.0.1.

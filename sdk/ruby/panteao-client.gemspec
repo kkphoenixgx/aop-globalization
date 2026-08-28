@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'panteao-client'
-  s.version     = '1.1.43'
+  s.version     = '1.1.44'
   s.summary     = "Ruby client for Panteao BDI Coprocessor"
   s.authors     = ["Panteao Authors"]
   s.files       = ["lib/panteao_client.rb"]

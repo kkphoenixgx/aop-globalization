@@ -22,7 +22,7 @@ class Panteao:
         if not os.path.exists(self.bin_path):
             self.bin_path = os.path.join(current_dir, bin_name)
             
-        self.version = "1.1.43"
+        self.version = "1.1.44"
             
         self.auto_reconnect = False if project else auto_reconnect
         self.socket = None

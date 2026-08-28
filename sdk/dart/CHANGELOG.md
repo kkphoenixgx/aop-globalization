@@ -1,3 +1,6 @@
+## 1.1.44
+
+- Athena new version +version
 ## 1.1.43
 
 - athena jason.asSemantics.Agent.getPL() error +version
