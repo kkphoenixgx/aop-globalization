@@ -1,0 +1,3 @@
+mas athena_test {
+    agent test_athena : benchmark_roguelike.asl { ag-arch: br.com.kkphoenix.Athena }
+}

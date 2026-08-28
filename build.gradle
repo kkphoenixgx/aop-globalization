@@ -11,8 +11,8 @@ version = '1.0.0'
 
 repositories {
     mavenLocal()
-    mavenCentral()
     maven { url "https://raw.githubusercontent.com/jacamo-lang/mvn-repo/master" }
+    mavenCentral()
     maven { url "https://jitpack.io" }
 }
 
