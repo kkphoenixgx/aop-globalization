@@ -1,3 +1,6 @@
+## 1.1.45
+
+- /home/kkphoenix/Documentos/Workspace/1. Pesquisa/jason-athena/jasonAthena/target/jason-athena-0.0.0.jar
 ## 1.1.44
 
 - Athena new version +version

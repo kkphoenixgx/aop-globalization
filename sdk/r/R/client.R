@@ -10,7 +10,7 @@ BdiClient <- function(host = "127.0.0.1", port = 0, project = NULL) {
     })
   }
 
-  VERSION <- "1.1.44"
+  VERSION <- "1.1.45"
 
   downloadEngine <- function(binPath) {
     is_win <- .Platform$OS.type == "windows"

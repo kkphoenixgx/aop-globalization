@@ -190,7 +190,7 @@ class BdiClient(host: String = "127.0.0.1", port: Int = 0, project: String = nul
 }
 
 object BdiClient {
-  val VERSION = "1.1.44"
+  val VERSION = "1.1.45"
 
   private def downloadEngine(binPath: String): Unit = {
     val isWin = System.getProperty("os.name").toLowerCase.contains("win")

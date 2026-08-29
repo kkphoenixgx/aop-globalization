@@ -10,7 +10,7 @@ public typealias WildcardCallback = (String, String, [String], @escaping (Bool) 
 
 public class BdiClient {
 
-    private static let version = "1.1.44"
+    private static let version = "1.1.45"
 
     private static func downloadEngine(to binPath: String) {
         let isWin = ProcessInfo.processInfo.environment["OS"]?.contains("Windows") == true
